@@ -3,11 +3,11 @@ This file is the main entry point for the Test bot.
 """
 
 import asyncio
+import typing
 
 import discord
-from discord import app_commands
-
 from bot import DiscordBot
+from cogs.test import Test
 
 MY_DUDES = discord.Object(id=408172061723459584)
 TEST_CHANNEL = discord.Object(id=408481491597787136)
@@ -17,16 +17,14 @@ class TestBot(DiscordBot):
     def __init__(self, name: str):
         super().__init__(name)
 
+    async def start(self):
+        # Load the test cog.
+        await self.load_cog("test", "Test")
+        self.test = typing.cast(Test, self.get_cog("Test"))
+
+        await super().start()
+
     async def setup_hook(self):
-        self.log("Copying global commands to guild")
-
-        # Add the hello command
-        @self.tree.command(name="hello", description="Says hello!", guild=MY_DUDES)
-        async def hello(interaction: discord.Interaction):
-            """Says hello!"""
-            text = f"Hi, {interaction.user.mention}"
-            await self.messaging.send_embed(interaction, text=text)
-
         # Sync the commands to the guild.
         self.log("Syncing commands to my dudes guild")
         await self.tree.sync(guild=MY_DUDES)
@@ -46,16 +44,7 @@ class TestBot(DiscordBot):
         )
 
         # Test the messaging cog.
-        await self.test_messaging()
-
-    async def test_messaging(self):
-        """Test the messaging cog by sending and deleting a message."""
-        channel = self.get_channel(TEST_CHANNEL.id)
-        message = await self.messaging.send_embed(channel, title="Hello, world!")
-        await self.messaging.add_reactions(message, ["👍", "👎"])
-        await self.messaging.delete_message(message)
-
-        self.log("Successfully sent and deleted a message!")
+        await self.test.test_messaging_cog(channel_id=TEST_CHANNEL.id)
 
 
 async def main():
