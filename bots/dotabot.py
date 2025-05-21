@@ -20,7 +20,7 @@ class DotaBot(DiscordBot):
         cog = await self.load_cog("dota.dota_wiki", "DotaWiki")
         self.dota_wiki = typing.cast(DotaWiki, cog)
 
-        await super().start()
+        await super().start(token=self.secrets.get("DOTABOT_DISCORD_SECRET_TOKEN"))
 
     async def on_ready(self):
         await super().on_ready()
