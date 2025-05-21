@@ -9,6 +9,7 @@ import colorama
 import discord
 from discord.ext import commands
 
+from cogs.common.audio import Audio
 from cogs.common.messaging import Messaging
 from cogs.common.secrets import Secrets
 from cogs.common.utils import Utils
@@ -29,8 +30,9 @@ class DiscordBot(commands.Bot):
         super().__init__(command_prefix="/", case_insensitive=True, intents=intents)
         self.name = name
         # Add type hints for cogs
-        self.secrets: Secrets
+        self.audio: Audio
         self.messaging: Messaging
+        self.secrets: Secrets
         self.utils: Utils
 
     @classmethod
@@ -52,7 +54,9 @@ class DiscordBot(commands.Bot):
         bot.messaging = typing.cast(Messaging, cog)
         cog = await bot.load_cog("common.utils", "Utils")
         bot.utils = typing.cast(Utils, cog)
-        cog = await bot.load_cog("common.error_handler", "ErrorHandler")
+        cog = await bot.load_cog("common.audio", "Audio")
+        bot.audio = typing.cast(Audio, cog)
+        # cog = await bot.load_cog("common.error_handler", "ErrorHandler")
         return bot
 
     async def setup_hook(self):
@@ -81,6 +85,15 @@ class DiscordBot(commands.Bot):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(
             f"{colorama.Fore.CYAN}[{timestamp}] {colorama.Fore.GREEN}[{self.name}]{colorama.Style.RESET_ALL} {message}"
+        )
+
+    def error(self, message: str):
+        """
+        Log an error message to the console with colors.
+        """
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(
+            f"{colorama.Fore.CYAN}[{timestamp}] {colorama.Fore.RED}[{self.name}]{colorama.Style.RESET_ALL} Error: {message}"
         )
 
     async def start(self, token=None):

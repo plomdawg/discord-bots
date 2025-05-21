@@ -11,6 +11,26 @@ class Utils(commands.Cog):
         # Store the bot instance so we can access it inside the cog.
         self.bot = bot
 
+    def get_voice_channel(self, user, guild_id):
+        """
+        Get the voice channel for a user in a guild.
+        """
+        if user.voice:
+            return user.voice.channel
+
+        guild = self.bot.get_guild(guild_id)
+        if guild is None:
+            return None
+
+        # Find the user's voice channel.
+        for channel in guild.voice_channels:
+            for member in channel.members:
+                if member.id == user.id:
+                    return channel
+
+        # Failed to find a voice channel.
+        return None
+
     def server_info(self):
         """
         List all servers the bot is in.
