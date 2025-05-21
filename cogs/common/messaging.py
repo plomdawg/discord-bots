@@ -31,6 +31,65 @@ class Messaging(commands.Cog):
             except discord.errors.NotFound:
                 pass
 
+    def _create_base_embed(
+        self,
+        color,
+        title=None,
+        thumbnail=None,
+        subtitle=None,
+        subtext=None,
+        footer=None,
+        footer_icon=None,
+    ) -> discord.Embed:
+        """Creates a base embed with common fields."""
+        embed = discord.Embed(color=color)
+        if title is not None:
+            embed.title = title
+        if thumbnail is not None:
+            embed.set_thumbnail(url=thumbnail)
+        if subtitle is not None or subtext is not None:
+            embed.add_field(name=subtitle, value=subtext, inline=True)
+        if footer is not None:
+            if footer_icon is not None:
+                embed.set_footer(text=footer, icon_url=footer_icon)
+            else:
+                embed.set_footer(text=footer)
+        return embed
+
+    async def _send_single_embed(self, channel, embed):
+        """Sends a single embed message to the channel."""
+        if type(channel) == discord.interactions.Interaction:
+            return await channel.response.send_message(embed=embed)
+        return await channel.send(embed=embed)
+
+    def _split_text_into_chunks(self, text):
+        """Splits text into chunks that fit within Discord's message length limit."""
+        chunks = []
+        lines = text.split("\n")
+        current_chunk = ""
+
+        while lines:
+            line = lines.pop(0) + "\n"
+
+            if len(current_chunk) + len(line) < MAX_MSG_LENGTH:
+                current_chunk += line
+            elif len(line) > MAX_MSG_LENGTH:
+                cutoff = MAX_MSG_LENGTH - len(current_chunk)
+                next_line = line[:cutoff]
+                remainder = line[cutoff:-1]
+                current_chunk += next_line
+                chunks.append(current_chunk)
+                current_chunk = ""
+                lines.insert(0, remainder)
+            else:
+                chunks.append(current_chunk)
+                current_chunk = line
+
+        if current_chunk:
+            chunks.append(current_chunk)
+
+        return chunks
+
     async def send_embed(
         self,
         channel,
@@ -49,98 +108,49 @@ class Messaging(commands.Cog):
         message is split up into chunks. The first message will have the title and thumbnail,
         and only the last message will have the footer. Returns the last message sent.
         """
-        # Use a random color if none was given
         color = color or random.randint(0, 0xFFFFFF)
 
-        self.bot.log(f"type(channel) = {type(channel)}")
-        # If the text is short enough to fit into one message,
-        # create and send a single embed.
+        # If the text is short enough to fit into one message, create and send a single embed
         if text is None or len(text) <= MAX_MSG_LENGTH:
-            embed = discord.Embed(color=color)
-            if footer is not None:
-                if footer_icon is None:
-                    embed.set_footer(text=footer)
-                else:
-                    embed.set_footer(text=footer, icon_url=footer_icon)
-            if subtitle is not None or subtext is not None:
-                embed.add_field(name=subtitle, value=subtext, inline=True)
-            if thumbnail is not None:
-                embed.set_thumbnail(url=thumbnail)
-            if title is not None:
-                embed.title = title
+            embed = self._create_base_embed(
+                color=color,
+                title=title,
+                thumbnail=thumbnail,
+                subtitle=subtitle,
+                subtext=subtext,
+                footer=footer,
+                footer_icon=footer_icon,
+            )
             if text is not None:
                 embed.description = text
+            return await self._send_single_embed(channel, embed)
 
-            # If this is a ctx, use respond() so the command succeeds and doesn't
-            # print "This interaction failed" to the user.
-            self.bot.log(f"type(channel) = {type(channel)}")
-            if type(channel) == discord.interactions.Interaction:
-                response = await channel.response.send_message(embed=embed)
-                return
+        # Handle long text by splitting into chunks
+        chunks = self._split_text_into_chunks(text)
+        last_response = None
 
-            # Send the single message
-            return await channel.send(embed=embed)
+        for i, chunk in enumerate(chunks):
+            embed = discord.Embed(color=color, description=chunk)
 
-        # If the text is too long, it must be broken into chunks.
-        message_index = 0
-        lines = text.split("\n")
-        while lines:
-            # Construct the text of this message
-            text = ""
-            while True:
-                if not lines:
-                    break
-                line = lines.pop(0) + "\n"
-
-                # next line fits in this message, add it
-                if len(text) + len(line) < MAX_MSG_LENGTH:
-                    text += line
-
-                # one line is longer than max length of message, split the line and put the rest back
-                elif len(line) > MAX_MSG_LENGTH:
-                    cutoff = MAX_MSG_LENGTH - len(text)
-                    next_line = line[:cutoff]
-                    remainder = line[cutoff:-1]
-                    text += next_line
-                    lines.insert(0, remainder)
-                # message is full - send it
-                else:
-                    lines.insert(0, line)
-                    break
-
-            embed = discord.Embed(color=color)
-            embed.description = text
-
-            # First message in chain - add the title and thumbnail
-            if message_index == 0:
+            # First message gets title and thumbnail
+            if i == 0:
                 if title is not None:
                     embed.title = title
                 if thumbnail is not None:
                     embed.set_thumbnail(url=thumbnail)
                 if subtitle is not None or subtext is not None:
                     embed.add_field(name=subtitle, value=subtext, inline=True)
-                response = await channel.send(embed=embed)
 
-            # Last message in chain - add the footer.
-            if not lines:
-                if footer is not None:
-                    if footer_icon is not None:
-                        embed.set_footer(text=footer, icon_url=footer_icon)
-                    else:
-                        embed.set_footer(text=footer)
-
-                # If this is an interaction, use response.send_message() so the command
-                # succeeds and doesn't print "This interaction failed" to the user.
-                self.bot.log(f"type(channel) = {type(channel)}")
-                if type(channel) == discord.interactions.Interaction:
-                    response = await channel.response.send_message(embed=embed)
+            # Last message gets footer
+            if i == len(chunks) - 1 and footer is not None:
+                if footer_icon is not None:
+                    embed.set_footer(text=footer, icon_url=footer_icon)
                 else:
-                    response = await channel.send(embed=embed)
+                    embed.set_footer(text=footer)
 
-            message_index = message_index + 1
+            last_response = await self._send_single_embed(channel, embed)
 
-        # Return the last message sent so reactions can be easily added
-        return response
+        return last_response
 
 
 async def setup(bot):
