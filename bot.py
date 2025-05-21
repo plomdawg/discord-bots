@@ -1,0 +1,125 @@
+"""
+This file is the main entry point for a discord bot.
+"""
+
+import typing
+from datetime import datetime
+
+import colorama
+import discord
+from discord.ext import commands
+
+from cogs.common.messaging import Messaging
+from cogs.common.secrets import Secrets
+from cogs.common.utils import Utils
+
+# Initialize colorama for colored console output.
+colorama.init()
+
+
+class DiscordBot(commands.Bot):
+    def __init__(self, name: str):
+        """
+        Initialize the bot.
+
+        Args:
+            name (str): The name of the bot.
+        """
+        intents = discord.Intents.all()
+        super().__init__(command_prefix="/", case_insensitive=True, intents=intents)
+        self.name = name
+        # Add type hints for cogs
+        self.secrets: Secrets
+        self.messaging: Messaging
+        self.utils: Utils
+
+    @classmethod
+    async def create(cls, name: str) -> "DiscordBot":
+        """
+        Create and initialize a new bot instance.
+
+        Args:
+            name (str): The name of the bot.
+
+        Returns:
+            DiscordBot: The initialized bot instance.
+        """
+        bot = cls(name)
+        # Load the cogs used by all bots.
+        cog = await bot.load_cog("common.secrets", "Secrets")
+        bot.secrets = typing.cast(Secrets, cog)
+        cog = await bot.load_cog("common.messaging", "Messaging")
+        bot.messaging = typing.cast(Messaging, cog)
+        cog = await bot.load_cog("common.utils", "Utils")
+        bot.utils = typing.cast(Utils, cog)
+        return bot
+
+    async def setup_hook(self):
+        """
+        Setup the bot by syncing commands to one guild.
+        """
+        self.log("Syncing commands to my dudes guild")
+        await self.tree.sync(guild=discord.Object(id=408172061723459584))
+        self.log("Done syncing commands to my dudes guild")
+
+    @property
+    def invite_link(self) -> str:
+        """
+        Get the invite link for the bot.
+        """
+        permissions = 1110453312
+        url = f"https://discordapp.com/oauth2/authorize"
+        url += f"?client_id={self.user.id}"  # type: ignore
+        url += f"&scope=bot&permissions={permissions}"
+        return url
+
+    def log(self, message: str):
+        """
+        Log a message to the console with colors.
+        """
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(
+            f"{colorama.Fore.CYAN}[{timestamp}] {colorama.Fore.GREEN}[{self.name}]{colorama.Style.RESET_ALL} {message}"
+        )
+
+    async def start(self, token=None):
+        """
+        Start the bot with the given token.
+        """
+        # Use provided token or get from secrets
+        self.log("Starting bot...")
+        token = token or self.secrets.get("DISCORD_BOT_SECRET_TOKEN")  # type: ignore
+        await super().start(token)
+
+    async def load_cog(self, cog_path: str, cog_name: str) -> commands.Cog:
+        """
+        Load a cog.
+
+        Args:
+            cog_path (str): The path to the cog module.
+            cog_name (str): The name of the cog class.
+
+        Returns:
+            commands.Cog: The loaded cog.
+        """
+        self.log(
+            f"Loading cog: {colorama.Fore.YELLOW}{cog_name}{colorama.Style.RESET_ALL} from {colorama.Fore.YELLOW}{cog_path}{colorama.Style.RESET_ALL}"
+        )
+        await self.load_extension(f"cogs.{cog_path}")
+        cog = self.get_cog(cog_name)
+        if cog is None:
+            raise ValueError(f"Cog {cog_name} not found")
+        return cog
+
+    async def on_ready(self):
+        """
+        Called when the bot is ready.
+        """
+        self.log(
+            f"Logged in as {colorama.Fore.GREEN}{self.user}{colorama.Style.RESET_ALL}"
+        )
+        self.log("Invite the bot to your server using the following link:")
+        self.log(f" --> {self.invite_link}")
+
+        # Print all servers the bot is in
+        self.utils.server_info()  # type: ignore

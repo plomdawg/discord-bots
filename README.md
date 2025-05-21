@@ -1,2 +1,54 @@
-# discord-bots
-Discord bots
+# Discord Bots
+
+A collection of Discord bots with shared functionality, built using discord.py. This project is designed to maintain multiple specialized bots while sharing common code and functionality.
+
+## Features
+
+### Dotabot
+- Voiceline playback
+- Shopkeeper's Quiz
+- Dota Wiki scraper
+
+### Musicbot
+- Music playback and playlist management
+- Queue management
+- Audio controls (volume, skip, pause)
+- Spotify and YouTube support
+
+### Voicebot
+- AI Text-to-speech capabilities
+
+## Project Structure
+
+```
+discord-bots/
+├── bot.py           # Base DiscordBot class
+├── bots/            # Individual bot implementations
+│   ├── dotabot.py   # DotA 2 bot
+│   ├── musicbot.py  # Music playing bot
+│   ├── testbot.py   # Test bot
+│   └── voicebot.py  # AI TTS bot
+└── cogs/            # Bot functionality modules
+    ├── common/      # Shared functionality
+    └── dota/        # Dota-specific commands
+```
+
+## Setup
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Export keys as environment variables:
+   ```bash
+   export DISCORD_BOT_CLIENT_ID="123456789012345678"
+   export DISCORD_BOT_SECRET_TOKEN="Abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz"
+   ```
+4. Run the desired bots:
+   ```bash
+   python -m bots.dotabot
+   python -m bots.musicbot
+   python -m bots.testbot
+   python -m bots.voicebot
+   ```

@@ -1,0 +1,3 @@
+# Discord.py library
+# https://github.com/Rapptz/discord.py
+discord.py[voice]
