@@ -52,6 +52,7 @@ class DiscordBot(commands.Bot):
         bot.messaging = typing.cast(Messaging, cog)
         cog = await bot.load_cog("common.utils", "Utils")
         bot.utils = typing.cast(Utils, cog)
+        cog = await bot.load_cog("common.error_handler", "ErrorHandler")
         return bot
 
     async def setup_hook(self):
