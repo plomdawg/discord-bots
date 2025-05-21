@@ -29,6 +29,7 @@ class TestBot(DiscordBot):
         self.log("Syncing commands to my dudes guild")
         await self.tree.sync(guild=MY_DUDES)
         self.log("Done syncing commands to my dudes guild")
+        await super().setup_hook()
 
     async def on_ready(self):
         await super().on_ready()

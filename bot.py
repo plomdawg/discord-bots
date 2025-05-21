@@ -56,11 +56,11 @@ class DiscordBot(commands.Bot):
 
     async def setup_hook(self):
         """
-        Setup the bot by syncing commands to one guild.
+        Setup the bot by syncing commands to all guilds.
         """
-        self.log("Syncing commands to my dudes guild")
-        await self.tree.sync(guild=discord.Object(id=408172061723459584))
-        self.log("Done syncing commands to my dudes guild")
+        self.log(f"Syncing {len(self.tree.get_commands())} commands to all guilds")
+        await self.tree.sync()
+        self.log("Done syncing commands to all guilds")
 
     @property
     def invite_link(self) -> str:
