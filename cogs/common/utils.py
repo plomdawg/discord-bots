@@ -1,8 +1,10 @@
 from discord.ext import commands
 
+from bot import DiscordBot
+
 
 class Utils(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: DiscordBot):
         # Store the bot instance so we can access it inside the cog.
         self.bot = bot
 
@@ -16,7 +18,7 @@ class Utils(commands.Cog):
             self.bot.log(
                 f" -  {guild.owner}: {guild.name} ({guild.id}) {guild.member_count} members"
             )
-            total_members += guild.member_count
+            total_members += guild.member_count or 0
         self.bot.log(f"Total members: {total_members}")
 
 

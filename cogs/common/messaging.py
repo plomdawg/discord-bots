@@ -4,11 +4,13 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import context
 
+from bot import DiscordBot
+
 MAX_MSG_LENGTH = 2048
 
 
 class Messaging(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: DiscordBot):
         # Store the bot instance so we can access it inside the cog.
         self.bot = bot
 
