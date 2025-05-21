@@ -16,7 +16,7 @@ class VoiceBot(DiscordBot):
 
     async def start(self):
         await self.load_cog("voice.elevenlabs", "ElevenLabsTTS")
-        await super().start()
+        await super().start(token=self.secrets.get("VOICEBOT_DISCORD_SECRET_TOKEN"))
 
     async def on_ready(self):
         await super().on_ready()
