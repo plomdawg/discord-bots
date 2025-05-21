@@ -2,9 +2,12 @@
 This cog provides Dota 2 wiki-related functionality.
 """
 
+from typing import TYPE_CHECKING
+
 from discord.ext import commands
 
-from bots.dotabot import DotaBot
+if TYPE_CHECKING:
+    from bots.dotabot import DotaBot
 
 
 class DotaWiki(commands.Cog):

@@ -1,14 +1,17 @@
 import random
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
-from discord.ext.commands import context
+
+if TYPE_CHECKING:
+    from bot import DiscordBot
 
 MAX_MSG_LENGTH = 2048
 
 
 class Messaging(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: "DiscordBot"):
         # Store the bot instance so we can access it inside the cog.
         self.bot = bot
 

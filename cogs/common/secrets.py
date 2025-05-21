@@ -3,12 +3,16 @@ This cog is used to load secrets.
 """
 
 import os
+from typing import TYPE_CHECKING
 
 from discord.ext import commands
 
+if TYPE_CHECKING:
+    from bot import DiscordBot
+
 
 class Secrets(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: "DiscordBot"):
         self.bot = bot
 
     def get(self, secret_name) -> str:

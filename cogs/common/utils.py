@@ -1,8 +1,13 @@
+from typing import TYPE_CHECKING
+
 from discord.ext import commands
+
+if TYPE_CHECKING:
+    from bot import DiscordBot
 
 
 class Utils(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: "DiscordBot"):
         # Store the bot instance so we can access it inside the cog.
         self.bot = bot
 

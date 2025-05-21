@@ -6,6 +6,7 @@ import asyncio
 import typing
 
 import discord
+
 from bot import DiscordBot
 from cogs.test import Test
 

@@ -2,12 +2,17 @@
 This cog provides test functionality.
 """
 
-from discord.ext import commands
+from typing import TYPE_CHECKING
+
 import discord
+from discord.ext import commands
+
+if TYPE_CHECKING:
+    from bots.testbot import TestBot
 
 
 class Test(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: "TestBot"):
         self.bot = bot
 
     # Add the /hello command
