@@ -6,11 +6,9 @@ import os
 
 from discord.ext import commands
 
-from bot import DiscordBot
-
 
 class Secrets(commands.Cog):
-    def __init__(self, bot: DiscordBot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     def get(self, secret_name) -> str:
