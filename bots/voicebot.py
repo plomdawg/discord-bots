@@ -10,26 +10,23 @@ from bot import DiscordBot
 
 
 class VoiceBot(DiscordBot):
-    def __init__(self):
-        super().__init__("Voice Bot")
+    def __init__(self, name: str):
+        super().__init__(name)
+        self.prefix = ";"
 
     async def start(self):
+        await self.load_cog("voice.elevenlabs", "ElevenLabsTTS")
         await super().start()
 
     async def on_ready(self):
         await super().on_ready()
 
-        # Change discord status to "Playing TTS in __ servers"
-        await self.change_presence(
-            activity=discord.Activity(
-                name=f"TTS in {len(self.guilds)} servers",
-                type=discord.ActivityType.streaming,
-            )
-        )
+        # Change presence to "Playing AI voices | ;help"
+        await self.set_activity(f"Playing AI voices | {self.prefix}help")
 
 
 async def main():
-    bot = VoiceBot()
+    bot = await VoiceBot.create("Voice Bot")
     await bot.start()
 
 

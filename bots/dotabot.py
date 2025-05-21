@@ -26,12 +26,7 @@ class DotaBot(DiscordBot):
         await super().on_ready()
 
         # Change discord status to "Playing DotA 2 in __ servers"
-        await self.change_presence(
-            activity=discord.Activity(
-                name=f"DotA 2 in {len(self.guilds)} servers",
-                type=discord.ActivityType.streaming,
-            )
-        )
+        await self.set_activity(f"DotA 2 in {len(self.guilds)} servers")
 
 
 async def main():

@@ -38,12 +38,7 @@ class TestBot(DiscordBot):
         self.log("Registering test command")
 
         # Change discord status to "Watching __ servers"
-        await self.change_presence(
-            activity=discord.Activity(
-                name=f"{len(self.guilds)} servers",
-                type=discord.ActivityType.watching,
-            )
-        )
+        await self.set_activity(f"Watching {len(self.guilds)} servers")
 
         # Test the messaging cog.
         await self.test.test_messaging_cog(channel_id=TEST_CHANNEL.id)

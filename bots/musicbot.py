@@ -20,12 +20,7 @@ class MusicBot(DiscordBot):
         await super().on_ready()
 
         # Change discord status to "Playing music in __ servers"
-        await self.change_presence(
-            activity=discord.Activity(
-                name=f"music in {len(self.guilds)} servers",
-                type=discord.ActivityType.streaming,
-            )
-        )
+        await self.set_activity(f"Playing music in {len(self.guilds)} servers")
 
 
 async def main():

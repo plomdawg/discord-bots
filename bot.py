@@ -124,3 +124,31 @@ class DiscordBot(commands.Bot):
 
         # Print all servers the bot is in
         self.utils.server_info()  # type: ignore
+
+    async def set_activity(self, activity: str):
+        """Sets the bot's activity based on a string.
+        Available activities: Playing, Listening to, Watching
+        Example: set_activity("Watching in 42 servers")"""
+        # Generate the discord.Activity based on the first word
+
+        # Only a few of the activity types are supported.
+        activities = {
+            "Playing": discord.ActivityType.playing,
+            "Listening to": discord.ActivityType.listening,
+            "Watching": discord.ActivityType.watching,
+        }
+
+        # Default to "Playing"
+        activity_type = discord.ActivityType.playing
+
+        # CHeck if the activity starts with a supported activity type.
+        for activity_name, _activity_type in activities.items():
+            if activity.startswith(activity_name):
+                activity = activity.strip(activity_name)
+                activity_type = _activity_type
+                break
+
+        # Set the activity.
+        await self.change_presence(
+            activity=discord.Activity(name=activity, type=activity_type)
+        )
