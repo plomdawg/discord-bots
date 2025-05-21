@@ -38,7 +38,7 @@ class Genius(commands.Cog):
             interaction,
             title="Searching for lyrics...",
             text=text,
-            color=Colors.BLUE,
+            color=Colors.BLUE.value,
         )
         assert isinstance(response, discord.interactions.InteractionCallbackResponse)
         async with interaction.channel.typing():
@@ -48,12 +48,12 @@ class Genius(commands.Cog):
                 text = f"Lyrics from [Genius]({song.url}))\n"
                 text += song.lyrics
                 thumbnail = song.song_art_image_thumbnail_url
-                color = Colors.GREEN
+                color = Colors.GREEN.value
             else:
                 title = "Song not found:"
                 text = f" > {bold(song_name)}"
                 thumbnail = None
-                color = Colors.RED
+                color = Colors.RED.value
             await self.bot.messaging.edit_embed(
                 response.resource,
                 title=title,

@@ -13,7 +13,7 @@ from discord.ext import commands
 from elevenlabs.client import ElevenLabs
 from elevenlabs.types.voice import Voice
 
-from cogs.common.messaging import bold, Colors
+from cogs.common.messaging import bold, Colors, code
 from cogs.common.audio import AudioTrack
 
 if TYPE_CHECKING:
@@ -64,7 +64,7 @@ class ElevenLabsTTS(commands.Cog):
                 return await self.bot.messaging.send_embed(
                     message.channel,
                     text=f"{user.mention} Message too long, please keep it under {MAX_TTS_LENGTH} characters.",
-                    color=Colors.RED,
+                    color=Colors.RED.value,
                 )
 
             # Get the voice and create TTS instance
@@ -99,7 +99,7 @@ class ElevenLabsTTS(commands.Cog):
             response = await self.bot.messaging.send_embed(
                 channel=message.channel,
                 text=tts.quoted_text,
-                color=Colors.GRAY,
+                color=Colors.GRAY.value,
                 footer=footer,
             )
 
@@ -112,7 +112,7 @@ class ElevenLabsTTS(commands.Cog):
             if voice_channel is None:
                 return await self.bot.messaging.edit_embed(
                     message=response,
-                    color=Colors.RED,
+                    color=Colors.RED.value,
                     text="Failed! You must be in a voice channel to play a message.",
                 )
 
@@ -126,7 +126,7 @@ class ElevenLabsTTS(commands.Cog):
 
                 # Update embed to show processing
                 await self.bot.messaging.edit_embed(
-                    message=response, color=Colors.BLUE, footer=footer
+                    message=response, color=Colors.BLUE.value, footer=footer
                 )
 
                 # Play the audio
@@ -135,13 +135,13 @@ class ElevenLabsTTS(commands.Cog):
 
                 # Update embed to show success
                 await self.bot.messaging.edit_embed(
-                    message=response, color=Colors.GREEN
+                    message=response, color=Colors.GREEN.value
                 )
 
             except Exception as e:
                 logging.error(f"Failed to process TTS: {e}")
                 await self.bot.messaging.edit_embed(
-                    message=response, color=Colors.RED, text=f"Failed! {str(e)}"
+                    message=response, color=Colors.RED.value, text=f"Failed! {str(e)}"
                 )
 
         except Exception as e:
@@ -149,7 +149,7 @@ class ElevenLabsTTS(commands.Cog):
             if "response" in locals():
                 await self.bot.messaging.edit_embed(
                     message=response,
-                    color=Colors.RED,
+                    color=Colors.RED.value,
                     text=f"An unexpected error occurred: {str(e)}",
                 )
 
@@ -197,13 +197,13 @@ class ElevenLabsTTS(commands.Cog):
         text += f"{bold('Built-in voices')}:\n"
         for voice in self.voices:
             if voice.category == "premade":
-                text += f" {bold(voice.name)}"
+                text += f" {code(voice.name)}"
 
-        text += "-----------\n"
+        text += "\n-----------\n"
         text += f"{bold('Custom voices')}:\n"
         for voice in self.voices:
             if voice.category != "premade":
-                text += f" {bold(voice.name)}"
+                text += f" {code(voice.name)}"
 
         await self.bot.messaging.send_embed(channel, text=text)
         return

@@ -37,8 +37,8 @@ def underline(text):
 
 
 def code(text):
-    """Returns a code block version of the text."""
-    return f"```{text}```"
+    """Returns a code version of the text."""
+    return f"`{text}`"
 
 
 class Messaging(commands.Cog):
