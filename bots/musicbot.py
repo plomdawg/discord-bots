@@ -15,7 +15,7 @@ class MusicBot(DiscordBot):
 
     async def start(self):
         await self.load_cog("music.genius", "Genius")
-        await super().start()
+        await super().start(self.secrets.get("MUSICBOT_DISCORD_SECRET_TOKEN"))
 
     async def on_ready(self):
         await super().on_ready()
