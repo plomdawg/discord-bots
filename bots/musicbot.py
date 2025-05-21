@@ -14,6 +14,7 @@ class MusicBot(DiscordBot):
         super().__init__(name)
 
     async def start(self):
+        await self.load_cog("music.genius", "Genius")
         await super().start()
 
     async def on_ready(self):
