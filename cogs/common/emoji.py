@@ -1,10 +1,8 @@
-import random
 from typing import TYPE_CHECKING
 
-import discord
 from discord.ext import commands
-import enum
 
+from cogs.common import utils
 
 if TYPE_CHECKING:
     from bot import DiscordBot
@@ -39,11 +37,8 @@ class Emoji(commands.Cog):
             await self.bot.messaging.add_reactions(message, actions.keys())
 
     @commands.Cog.listener()
+    @utils.ignore_self
     async def on_reaction_add(self, reaction, user):
-        # Ignore reactions from self.
-        if user.id == self.bot.user.id:
-            return
-
         # Get the message.
         message = reaction.message
 

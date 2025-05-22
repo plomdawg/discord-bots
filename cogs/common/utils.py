@@ -1,9 +1,40 @@
-from typing import TYPE_CHECKING
+import functools
+from typing import TYPE_CHECKING, Any, Callable, Union
 
+import discord
 from discord.ext import commands
 
 if TYPE_CHECKING:
     from bot import DiscordBot
+
+
+def ignore_self(func: Callable) -> Callable:
+    """Decorator to ignore events from the bot itself.
+    Works with both on_message and on_reaction_add events."""
+
+    @functools.wraps(func)
+    async def wrapper(
+        self,
+        event: Union[discord.Message, discord.Reaction],
+        user: Union[discord.User, None] = None,
+        *args: Any,
+        **kwargs: Any,
+    ):
+        # For message events
+        if isinstance(event, discord.Message):
+            if event.author == self.bot.user:
+                return
+            return await func(self, event, *args, **kwargs)
+
+        # For reaction events
+        if isinstance(event, discord.Reaction):
+            if user == self.bot.user:
+                return
+            return await func(self, event, user, *args, **kwargs)
+
+        return await func(self, event, user, *args, **kwargs)
+
+    return wrapper
 
 
 class Utils(commands.Cog):

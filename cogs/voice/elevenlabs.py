@@ -157,11 +157,8 @@ class ElevenLabsTTS(commands.Cog):
                 )
 
     @commands.Cog.listener()
+    @utils.ignore_self
     async def on_message(self, message: discord.Message):
-        # Ignore messages from the bot itself.
-        if message.author == self.bot.user:
-            return
-
         # Help message.
         if message.content.startswith(self.bot.prefix + "help"):
             return await self.send_help(message.channel)
