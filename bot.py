@@ -67,10 +67,15 @@ class DiscordBot(commands.Bot):
         """
         Setup the bot by syncing commands to all guilds.
         """
-        self.log(f"Syncing {len(self.tree.get_commands())} commands to all guilds:")
-        for command in self.tree.get_commands():
+        commands = self.tree.get_commands()
+        if len(commands) == 0:
+            self.log("No commands to sync")
+            return
+        self.log(f"Syncing {len(commands)} commands to all guilds:")
+        for command in commands:
             assert isinstance(command, discord.app_commands.Command)
             self.log(f"   /{command.name} - {command.description}")
+
         await self.tree.sync()
         self.log("Done syncing commands to all guilds")
 
