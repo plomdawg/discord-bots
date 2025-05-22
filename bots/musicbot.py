@@ -4,8 +4,6 @@ This file is the main entry point for the Music bot.
 
 import asyncio
 
-import discord
-
 from bot import DiscordBot
 
 

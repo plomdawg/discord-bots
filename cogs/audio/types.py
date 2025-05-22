@@ -23,7 +23,7 @@ class AudioTrack:
         # The unique name/id of the track.
         self.name = kwargs.get("name")
         # The URL of the track (if it's a URL-based track)
-        self.url = kwargs.get("url")
+        self.source_url = kwargs.get("source_url")
         # The path to the audio file (if it's a local file)
         self.path = kwargs.get("path") or (
             AUDIO_DIRECTORY / f"{self.name}.mp3" if self.name else None
@@ -39,52 +39,24 @@ class AudioTrack:
         self.duration = kwargs.get("duration", 0)
         # YouTube URL for the track
         self.youtube_url = kwargs.get("youtube_url")
-        # Source type: "local", "youtube", or "spotify"
-        self.source_type = kwargs.get("source_type", "local")
+        # Spotify URL for the track
+        self.spotify_url = kwargs.get("spotify_url")
 
-    @property
-    def is_url(self) -> bool:
-        """Returns True if this track is URL-based."""
-        return bool(self.url)
-
-    @property
-    def is_local(self) -> bool:
-        """Returns True if this track is a local file."""
-        return bool(self.path and self.path.exists())
-
-    def get_audio_source(self, volume=0.5):
-        """Returns an appropriate audio source for this track."""
-        if self.source_type == "youtube" and self.youtube_url:
-            # For YouTube tracks, use the URL directly
-            ffmpeg_options = "-af loudnorm=I=-16.0:TP=-1.0 -ac 2 -ar 48000"
-            audio_source = discord.FFmpegPCMAudio(
-                source=self.youtube_url, options=ffmpeg_options
-            )
-            return discord.PCMVolumeTransformer(audio_source, volume=volume)
-
-        if self.is_url:
-            raise RuntimeError("URL tracks must be downloaded first")
-
-        if not self.is_local:
-            raise RuntimeError("Local track file does not exist")
-
-        # Set up FFMPEG options.
+    def ffmpeg_options(self):
+        """Returns the ffmpeg options for the track."""
         # -ss skips ahead to the current position in the track.
         # -af loudnorm normalizes the audio.
         # -ac 2 forces stereo output
         # -ar 48000 sets sample rate to 48kHz
-        ffmpeg_options = (
-            f"-ss {self.position} -af loudnorm=I=-16.0:TP=-1.0 -ac 2 -ar 48000"
-        )
+        return f"-ss {self.position} -af loudnorm=I=-16.0:TP=-1.0 -ac 2 -ar 48000"
 
-        # Create the audio source.
-        try:
-            audio_source = discord.FFmpegPCMAudio(
-                source=str(self.path), options=ffmpeg_options
-            )
-            return discord.PCMVolumeTransformer(audio_source, volume=volume)
-        except Exception as e:
-            raise
+    def audio_source(self, volume: float) -> discord.PCMVolumeTransformer:
+        """Returns an appropriate audio source for this track."""
+        source = self.source_url or str(self.path)
+        return discord.PCMVolumeTransformer(
+            discord.FFmpegPCMAudio(source=source, options=self.ffmpeg_options()),
+            volume=volume,
+        )
 
 
 class RepeatMode(enum.Enum):
