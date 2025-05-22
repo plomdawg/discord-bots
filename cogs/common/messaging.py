@@ -44,6 +44,13 @@ class Messaging(commands.Cog):
             except discord.errors.NotFound:
                 pass
 
+    async def remove_reaction(self, reaction):
+        """Removes a reaction from a message, ignoring NotFound errors"""
+        try:
+            await reaction.remove()
+        except discord.errors.NotFound:
+            pass
+
     async def remove_reactions(self, message):
         """Removes all reactions from a message, ignoring NotFound errors"""
         if message is not None:

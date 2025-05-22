@@ -107,7 +107,7 @@ class ElevenLabsTTS(commands.Cog):
             )
 
             # Add replay button
-            await self.bot.messaging.add_reactions(message, ["🔄"])
+            await self.bot.emoji.add_actions(message, {"🔄": self.handle_message_tts})
 
             # Get user's voice channel
             assert isinstance(message.guild, discord.Guild)
@@ -169,29 +169,6 @@ class ElevenLabsTTS(commands.Cog):
         # Play TTS messages that start with the prefix.
         if message.content.startswith(self.bot.prefix):
             await self.handle_message_tts(message, message.author)
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
-        # Only handle reactions on messages in a guild.
-        if payload.guild_id is None:
-            return
-
-        # Ignore bot reactions.
-        if payload.member and payload.member.bot:
-            return
-
-        # Find the message that was reacted to using the message ID
-        channel = self.bot.get_channel(payload.channel_id)
-        assert isinstance(channel, discord.TextChannel)
-        message = await channel.fetch_message(payload.message_id)
-
-        # If the reaction emoji is a replay button, replay the message.
-        if payload.emoji.name == "🔄":
-            # Remove the user's reaction.
-            assert isinstance(payload.member, discord.Member)
-            await message.remove_reaction(emoji=payload.emoji, member=payload.member)
-            # Handle the message as a TTS message.
-            await self.handle_message_tts(message, payload.member)
 
     async def send_help(self, channel):
         """Send the help message to the channel."""
