@@ -9,7 +9,7 @@ import discord
 import lyricsgenius
 from discord.ext import commands
 
-from cogs.common.messaging import bold, Colors
+from cogs.common.messaging import bold
 
 if TYPE_CHECKING:
     from bot import DiscordBot
@@ -38,7 +38,7 @@ class Genius(commands.Cog):
             interaction,
             title="Searching for lyrics...",
             text=text,
-            color=Colors.BLUE.value,
+            color=discord.Color.blue(),
         )
         assert isinstance(response, discord.interactions.InteractionCallbackResponse)
         async with interaction.channel.typing():
@@ -48,12 +48,12 @@ class Genius(commands.Cog):
                 text = f"Lyrics from [Genius]({song.url}))\n"
                 text += song.lyrics
                 thumbnail = song.song_art_image_thumbnail_url
-                color = Colors.GREEN.value
+                color = discord.Color.green()
             else:
                 title = "Song not found:"
                 text = f" > {bold(song_name)}"
                 thumbnail = None
-                color = Colors.RED.value
+                color = discord.Color.red()
             await self.bot.messaging.edit_embed(
                 response.resource,
                 title=title,

@@ -3,22 +3,11 @@ from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
-import enum
-
 
 if TYPE_CHECKING:
     from bot import DiscordBot
 
 MAX_MSG_LENGTH = 2048
-
-
-class Colors(enum.Enum):
-    RED = 0xFF0000
-    GREEN = 0x00FF00
-    BLUE = 0x0000FF
-    YELLOW = 0xFFFF00
-    PINK = 0xFF69B4
-    GRAY = 0x808080
 
 
 def bold(text):

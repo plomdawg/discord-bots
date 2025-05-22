@@ -13,7 +13,7 @@ from discord.ext import commands
 from elevenlabs.client import ElevenLabs
 from elevenlabs.types.voice import Voice
 
-from cogs.common.messaging import bold, Colors, code
+from cogs.common.messaging import bold, code
 from cogs.common.audio import AudioTrack
 
 if TYPE_CHECKING:
@@ -64,7 +64,7 @@ class ElevenLabsTTS(commands.Cog):
                 return await self.bot.messaging.send_embed(
                     message.channel,
                     text=f"{user.mention} Message too long, please keep it under {MAX_TTS_LENGTH} characters.",
-                    color=Colors.RED.value,
+                    color=discord.Color.red(),
                 )
 
             # Get the voice and create TTS instance
