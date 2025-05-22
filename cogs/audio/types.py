@@ -2,7 +2,6 @@ import asyncio
 import enum
 import pathlib
 import random
-import re
 import typing
 from typing import TYPE_CHECKING, Optional
 
@@ -196,8 +195,8 @@ class AudioQueue:
 
         # Non-empty queue - add shuffle button
         if self.tracks:
-            choices = {"🔀": "shuffle"}
-            await self.bot.messaging.add_choices(self.queue_message, choices)
+            action = {"🔀": self.shuffle}
+            await self.bot.emoji.add_actions(self.queue_message, action)
 
         return self.queue_message
 
