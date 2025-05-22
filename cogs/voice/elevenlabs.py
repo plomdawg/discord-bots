@@ -1,6 +1,5 @@
 # voice.py - Voice class for AI Voice Bots
 import io
-import logging
 import pathlib
 import random
 import time
@@ -143,7 +142,6 @@ class ElevenLabsTTS(commands.Cog):
                 )
 
             except Exception as e:
-                logging.error(f"Failed to process TTS: {e}")
                 await self.bot.messaging.edit_embed(
                     message=response,
                     color=discord.Color.red(),
@@ -151,7 +149,6 @@ class ElevenLabsTTS(commands.Cog):
                 )
 
         except Exception as e:
-            logging.error(f"Unexpected error in handle_message_tts: {e}")
             if "response" in locals():
                 await self.bot.messaging.edit_embed(
                     message=response,
@@ -250,7 +247,6 @@ class TTS:
             bytes: The generated audio data
         """
         if self._bytes is None:
-            logging.info(f"Generating TTS clip for text: {self.text}")
             start = time.time()
 
             try:
@@ -262,7 +258,6 @@ class TTS:
                 self._bytes = b"".join(audio_iterator)
                 self.gen_seconds = round(time.time() - start, 2)
             except Exception as e:
-                logging.error(f"Failed to generate TTS: {e}")
                 raise
 
         return self._bytes
@@ -282,7 +277,6 @@ class TTS:
                 normalized_sound = raw_audio.normalize()
                 normalized_sound.export(self.mp3_path, format="wav")
             except Exception as e:
-                logging.error(f"Failed to save audio: {e}")
                 raise
 
         return self.mp3_path
