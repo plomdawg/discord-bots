@@ -11,7 +11,6 @@ from discord.ext import commands
 
 from cogs.audio.audio import Audio
 from cogs.common.database import Database
-from cogs.common.emoji import Emoji
 from cogs.common.messaging import Messaging
 from cogs.common.secrets import Secrets
 from cogs.common.utils import Utils
@@ -32,7 +31,6 @@ class DiscordBot(commands.Bot):
         super().__init__(command_prefix="/", case_insensitive=True, intents=intents)
         self.name = name
         # Add type hints for cogs
-        self.emoji: Emoji
         self.audio: Audio
         self.database: Database
         self.messaging: Messaging
@@ -62,8 +60,6 @@ class DiscordBot(commands.Bot):
         bot.utils = typing.cast(Utils, cog)
         cog = await bot.load_cog("audio.audio", "Audio")
         bot.audio = typing.cast(Audio, cog)
-        cog = await bot.load_cog("common.emoji", "Emoji")
-        bot.emoji = typing.cast(Emoji, cog)
         # cog = await bot.load_cog("common.error_handler", "ErrorHandler")
         return bot
 

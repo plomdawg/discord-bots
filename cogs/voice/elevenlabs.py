@@ -14,6 +14,7 @@ from elevenlabs.types.voice import Voice
 
 from cogs.audio.types import AudioTrack
 from cogs.common.messaging import bold, code
+from cogs.common import utils
 
 if TYPE_CHECKING:
     from bots.voicebot import VoiceBot
@@ -57,7 +58,7 @@ class ElevenLabsTTS(commands.Cog):
             user: The user who triggered the TTS (may be different from message author)
         """
         try:
-            # Remove any existing reactions
+            # Remove the existing replay button.
             await self.bot.messaging.remove_reactions(message)
 
             # Extract and validate the text
@@ -72,7 +73,7 @@ class ElevenLabsTTS(commands.Cog):
 
             # Get the voice and create TTS instance
             voice = self.get_voice(message)
-            if voice and voice.name and " " in voice.name:
+            if voice and voice.name and " " in text:
                 text = text.split(" ", 1)[1].strip()
             else:
                 voice = random.Random(message.id).choice(list(self.voices))
@@ -107,7 +108,7 @@ class ElevenLabsTTS(commands.Cog):
             )
 
             # Add replay button
-            await self.bot.emoji.add_actions(message, {"🔄": self.handle_message_tts})
+            await self.bot.messaging.add_reactions(message, ["🔄"])
 
             # Get user's voice channel
             assert isinstance(message.guild, discord.Guild)
@@ -166,6 +167,13 @@ class ElevenLabsTTS(commands.Cog):
         # Play TTS messages that start with the prefix.
         if message.content.startswith(self.bot.prefix):
             await self.handle_message_tts(message, message.author)
+
+    @commands.Cog.listener()
+    @utils.ignore_self
+    async def on_reaction_add(self, reaction: discord.Reaction, user: discord.User):
+        # Replay TTS messages if the reaction is a 🔄.
+        if reaction.emoji == "🔄":
+            await self.handle_message_tts(reaction.message, user)
 
     async def send_help(self, channel):
         """Send the help message to the channel."""
