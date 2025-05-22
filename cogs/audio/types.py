@@ -287,24 +287,8 @@ class AudioPlayer:
         # Set the status to playing.
         self.status = AudioPlayerStatus.PLAYING
 
-        # Make sure the track is downloaded if it's a URL.
-        if self.queue.current_track.is_url:
-            player = await self.queue.current_track.download()
-            if player:
-                audio_source = player
-            else:
-                self.status = AudioPlayerStatus.STOPPED
-                return
-        else:
-            # Get the audio source for local files
-            try:
-                audio_source = self.queue.current_track.get_audio_source(
-                    volume=self.volume
-                )
-            except RuntimeError as e:
-                self.bot.error(f"Creating audio source: {e}")
-                self.status = AudioPlayerStatus.STOPPED
-                return
+        # Get the audio source for the track.
+        audio_source = self.queue.current_track.audio_source(volume=self.volume)
 
         def next_track(err=None):
             if err:
@@ -312,7 +296,7 @@ class AudioPlayer:
             # Set the status to stopped before moving on.
             self.status = AudioPlayerStatus.STOPPED
             # Move on to the next track in the queue.
-            self.bot.loop.create_task(self.increment_position())
+            self.queue.increment_position()
             self.bot.loop.create_task(self.play(channel))
 
         # Begin playback.
