@@ -9,7 +9,7 @@ import colorama
 import discord
 from discord.ext import commands
 
-from cogs.common.audio import Audio
+from cogs.common.database import Database
 from cogs.common.messaging import Messaging
 from cogs.common.secrets import Secrets
 from cogs.common.utils import Utils
@@ -31,6 +31,7 @@ class DiscordBot(commands.Bot):
         self.name = name
         # Add type hints for cogs
         self.audio: Audio
+        self.database: Database
         self.messaging: Messaging
         self.secrets: Secrets
         self.utils: Utils
@@ -50,6 +51,8 @@ class DiscordBot(commands.Bot):
         # Load the cogs used by all bots.
         cog = await bot.load_cog("common.secrets", "Secrets")
         bot.secrets = typing.cast(Secrets, cog)
+        cog = await bot.load_cog("common.database", "Database")
+        bot.database = typing.cast(Database, cog)
         cog = await bot.load_cog("common.messaging", "Messaging")
         bot.messaging = typing.cast(Messaging, cog)
         cog = await bot.load_cog("common.utils", "Utils")
