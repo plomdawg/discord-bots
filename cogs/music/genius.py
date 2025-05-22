@@ -2,8 +2,7 @@
 This cog is used to load secrets.
 """
 
-import os
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import discord
 import lyricsgenius
@@ -12,11 +11,11 @@ from discord.ext import commands
 from cogs.common.messaging import bold
 
 if TYPE_CHECKING:
-    from bot import DiscordBot
+    from bots.musicbot import MusicBot
 
 
 class Genius(commands.Cog):
-    def __init__(self, bot: "DiscordBot"):
+    def __init__(self, bot: "MusicBot"):
         self.bot = bot
         token = self.bot.secrets.get("GENIUS_API_KEY")
         self.client = lyricsgenius.Genius(token)
@@ -30,6 +29,7 @@ class Genius(commands.Cog):
         song_name: str = "",
         artist_name: str = "",
     ):
+
         assert isinstance(interaction.channel, discord.TextChannel)
         text = f" > {bold(song_name)}"
         if artist_name:
