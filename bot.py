@@ -9,6 +9,7 @@ import colorama
 import discord
 from discord.ext import commands
 
+from cogs.audio.audio import Audio
 from cogs.common.database import Database
 from cogs.common.messaging import Messaging
 from cogs.common.secrets import Secrets
@@ -57,7 +58,7 @@ class DiscordBot(commands.Bot):
         bot.messaging = typing.cast(Messaging, cog)
         cog = await bot.load_cog("common.utils", "Utils")
         bot.utils = typing.cast(Utils, cog)
-        cog = await bot.load_cog("common.audio", "Audio")
+        cog = await bot.load_cog("audio.audio", "Audio")
         bot.audio = typing.cast(Audio, cog)
         # cog = await bot.load_cog("common.error_handler", "ErrorHandler")
         return bot

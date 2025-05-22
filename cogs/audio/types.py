@@ -7,7 +7,8 @@ import typing
 from typing import TYPE_CHECKING, Optional
 
 import discord
-from discord.ext import commands
+
+from cogs.audio.utils import format_duration
 
 if TYPE_CHECKING:
     from bot import DiscordBot
@@ -17,63 +18,29 @@ AUDIO_DIRECTORY = pathlib.Path("audio")
 AUDIO_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 
-def format_duration(duration) -> str:
-    """Converts a duration into a string like '4h20m'"""
-    if duration is None:
-        return "?"
-    if duration < 60:  # Under a minute
-        return "{}s".format(int(duration))
-    if duration < 3600:  # Under an hour
-        return "{}m{}s".format(int(duration / 60), int(duration % 60))
-    # Over an hour
-    return "{}h{}m{}s".format(
-        int(duration / 3600), int(duration % 3600 / 60), int(duration % 60)
-    )
-
-
-def format_title(title) -> str:
-    """Removes "official audio/video" etc from video titles"""
-    keywords = [
-        " \\(official audio\\)",
-        " \\(official video\\)",
-        " \\(official music audio\\)",
-        " \\(official music video\\)",
-        " \\[official audio\\]",
-        " \\[official video\\]",
-        " \\[official music audio\\]",
-        " \\[official music video\\]",
-    ]
-    title_format = re.compile("|".join(keywords), re.IGNORECASE)
-    _title = title.replace("&amp;", "&")
-    _title = _title.replace("&quot;", '"')
-    return title_format.sub("", _title).strip()
-
-
-def volume_bar(volume):
-    """Returns an ASCII volume bar for the given volume.
-    volume_bar(25): █████░░░░░░░░░░░░░░░
-    """
-    length = 20
-    filled = int(volume * length / 100)
-    unfilled = length - filled
-    return "█" * filled + "░" * unfilled
-
-
 class AudioTrack:
-    def __init__(self, name=None, url=None, path=None, bot=None) -> None:
+    def __init__(self, **kwargs) -> None:
         # The unique name/id of the track.
-        self.name = name
+        self.name = kwargs.get("name")
         # The URL of the track (if it's a URL-based track)
-        self.url = url
+        self.url = kwargs.get("url")
         # The path to the audio file (if it's a local file)
-        self.path = path or (AUDIO_DIRECTORY / f"{self.name}.mp3" if name else None)
+        self.path = kwargs.get("path") or (
+            AUDIO_DIRECTORY / f"{self.name}.mp3" if self.name else None
+        )
         # Current position in the track.
         self.position = 0
         # Track metadata
-        self.title = None
-        self.data = None
+        self.title = kwargs.get("title")
+        self.data = kwargs.get("data")
         # Bot instance for logging
-        self.bot = bot
+        self.bot = kwargs.get("bot")
+        # Track duration in seconds
+        self.duration = kwargs.get("duration", 0)
+        # YouTube URL for the track
+        self.youtube_url = kwargs.get("youtube_url")
+        # Source type: "local", "youtube", or "spotify"
+        self.source_type = kwargs.get("source_type", "local")
 
     @property
     def is_url(self) -> bool:
@@ -87,6 +54,14 @@ class AudioTrack:
 
     def get_audio_source(self, volume=0.5):
         """Returns an appropriate audio source for this track."""
+        if self.source_type == "youtube" and self.youtube_url:
+            # For YouTube tracks, use the URL directly
+            ffmpeg_options = "-af loudnorm=I=-16.0:TP=-1.0 -ac 2 -ar 48000"
+            audio_source = discord.FFmpegPCMAudio(
+                source=self.youtube_url, options=ffmpeg_options
+            )
+            return discord.PCMVolumeTransformer(audio_source, volume=volume)
+
         if self.is_url:
             raise RuntimeError("URL tracks must be downloaded first")
 
@@ -112,12 +87,21 @@ class AudioTrack:
             raise
 
 
+class RepeatMode(enum.Enum):
+    OFF = 0
+    ALL = 1
+    ONE = 2
+
+
 class AudioQueue:
-    def __init__(self, bot):
+    """A queue of audio tracks with a pointer to the current track."""
+
+    def __init__(self, bot: "DiscordBot"):
         self.bot = bot
         self.tracks = []  # type: typing.List[AudioTrack]
         self.position = 0  # type: int
         self.queue_message = None
+        self.repeat_mode = RepeatMode.OFF
 
     @property
     def current_track(self) -> typing.Optional[AudioTrack]:
@@ -157,17 +141,119 @@ class AudioQueue:
         self.position = 0
         return cleared_tracks
 
+    def format_queue(self):
+        """Returns a track list with the current track highlighted"""
+        max_tracks = 10
+        track_list = ""
+
+        # Find the start and end of what we should print
+        queue_length = len(self.tracks)
+
+        # case 0: no tracks in queue
+        if len(self.tracks) == 0:
+            return "(empty)"
+
+        # case 1: queue is shorter than max tracks, print the whole thing
+        if queue_length <= max_tracks:
+            start = 0
+            end = queue_length
+
+        # case 2: less than max_tracks away from the current track - print old tracks
+        elif self.position - 1 + max_tracks > queue_length:
+            start = queue_length - max_tracks
+            if start < 0:
+                start = 0
+            end = queue_length
+
+        # case 3: more than max_tracks away from current track - print current and next few
+        else:
+            start = max(0, self.position - 1)
+            end = self.position + max_tracks
+
+        for i, track in enumerate(self.tracks[start:end]):
+            # Nicely format the duration
+            duration = format_duration(track.duration)
+
+            # Limit name length
+            length = 41 - len(duration)
+
+            # Add a triangle to the current track
+            symbol = "⭄" if self.position == start + i else "--"
+
+            # Remove brackets from track title and limit length
+            title = track.title[:length].translate(str.maketrans(dict.fromkeys("[]()")))
+
+            track_list += " {} {} [{}]({}) ({})\n".format(
+                symbol, start + i, title, track.youtube_url, duration
+            )
+
+            if i == max_tracks:
+                break
+
+        return track_list
+
+    def increment_position(self):
+        """Move the position pointer to the next track, obeying repeat mode."""
+        # Do not move if repeat one is set.
+        if self.repeat_mode == RepeatMode.ONE:
+            return
+
+        # Move to the next track.
+        self.position += 1
+
+        # Hit the end of the queue.
+        if len(self.tracks) <= self.position:
+            if self.repeat_mode == RepeatMode.ALL:
+                self.position = 0
+
+    async def send_queue_message(self, channel):
+        """Deletes existing queue message and sends a new one.
+
+        Args:
+            channel: discord.TextChannel to send the message
+        """
+        # Delete old message
+        if self.queue_message:
+            await self.bot.messaging.delete_message(self.queue_message)
+        self.queue_message = None
+
+        # Send the new message
+        embed = discord.Embed(color=0x22FF33, title="Song Queue ♫")
+        embed.description = self.format_queue()
+        self.queue_message = await channel.send(embed=embed)
+
+        # Non-empty queue - add shuffle button
+        if self.tracks:
+            choices = {"🔀": "shuffle"}
+            await self.bot.messaging.add_choices(self.queue_message, choices)
+
+        return self.queue_message
+
+    async def shuffle(self):
+        """Shuffles the tracks beyond the current position"""
+        if len(self.tracks) > self.position + 1:
+            temp = self.tracks[self.position + 1 :]
+            random.shuffle(temp)
+            self.tracks[self.position + 1 :] = temp
+
+        await self.update_queue_message()
+
+    async def update_queue_message(self):
+        """Updates Queue message if it exists."""
+        if self.queue_message is not None and self.queue_message.embeds:
+            embed = self.queue_message.embeds[0]
+            embed.description = self.format_queue()
+            try:
+                await self.queue_message.edit(embed=embed)
+            except discord.errors.NotFound:
+                pass
+
+
 class AudioPlayerStatus(enum.Enum):
     PLAYING = 1
     PAUSED = 2
     STOPPED = 3
     CONTINUING = 4
-
-
-class AudioPlayerRepeat(enum.Enum):
-    OFF = 0
-    ALL = 1
-    ONE = 2
 
 
 class AudioPlayer:
@@ -179,20 +265,6 @@ class AudioPlayer:
         self.volume = 0.30
         self.current_source: Optional[discord.PCMVolumeTransformer] = None
         self.status = AudioPlayerStatus.STOPPED
-        self.repeat = AudioPlayerRepeat.OFF
-
-    async def increment_position(self):
-        """Used by play when going to the next track."""
-        # Do not increment position if repeat one is set
-        if self.repeat == AudioPlayerRepeat.ONE:
-            return
-
-        self.queue.position += 1
-        # Hit the end of the queue
-        if len(self.queue.tracks) <= self.queue.position:
-            # Repeat
-            if self.repeat == AudioPlayerRepeat.ALL:
-                self.queue.position = 0
 
     async def connect(self, voice_channel):
         """Connects to a voice channel. Returns the voice channel or None if error"""
@@ -292,33 +364,3 @@ class AudioPlayer:
         if self.voice_client:
             await self.voice_client.disconnect(force=True)
         self.status = AudioPlayerStatus.STOPPED
-
-
-class Audio(commands.Cog):
-    def __init__(self, bot: "DiscordBot"):
-        # Store the bot instance so we can access it inside the cog.
-        self.bot = bot
-        self.players = {}  # type: typing.Dict[discord.Guild, AudioPlayer]
-
-    def get_player(self, guild: discord.Guild) -> AudioPlayer:
-        """Get the player for a guild."""
-        if guild not in self.players:
-            self.players[guild] = AudioPlayer(self.bot, guild)
-        return self.players[guild]
-
-    async def play(self, voice_channel: discord.VoiceChannel, track: AudioTrack):
-        """Add a track to the queue, then play/resume the queue.
-
-        Args:
-            voice_channel: The voice channel to play the track in.
-            track: The track to play.
-        """
-        self.bot.log(f"Playing track {track.name} in {voice_channel.name}")
-        player = self.get_player(voice_channel.guild)
-        # Set the bot instance on the track for logging
-        track.bot = self.bot
-        player.queue.add(track)
-        await player.play(voice_channel)
-
-async def setup(bot):
-    await bot.add_cog(Audio(bot))

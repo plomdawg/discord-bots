@@ -13,13 +13,17 @@ from discord.ext import commands
 from elevenlabs.client import ElevenLabs
 from elevenlabs.types.voice import Voice
 
+from cogs.audio.types import AudioTrack
 from cogs.common.messaging import bold, code
-from cogs.common.audio import AudioTrack
 
 if TYPE_CHECKING:
     from bots.voicebot import VoiceBot
 
 MAX_TTS_LENGTH = 500
+
+# The directory where audio files are stored.
+AUDIO_DIRECTORY = pathlib.Path("audio/tts")
+AUDIO_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 
 class ElevenLabsTTS(commands.Cog):
@@ -69,7 +73,7 @@ class ElevenLabsTTS(commands.Cog):
 
             # Get the voice and create TTS instance
             voice = self.get_voice(message)
-            if voice and voice.name:
+            if voice and voice.name and " " in voice.name:
                 text = text.split(" ", 1)[1].strip()
             else:
                 voice = random.Random(message.id).choice(list(self.voices))
@@ -78,7 +82,7 @@ class ElevenLabsTTS(commands.Cog):
                 elevenlabs=self,
                 text=text,
                 voice=voice,
-                tts_path="tts-discord",
+                tts_path=AUDIO_DIRECTORY,
                 message_id=str(message.id),
             )
 
@@ -99,7 +103,7 @@ class ElevenLabsTTS(commands.Cog):
             response = await self.bot.messaging.send_embed(
                 channel=message.channel,
                 text=tts.quoted_text,
-                color=Colors.GRAY.value,
+                color=discord.Color.light_gray(),
                 footer=footer,
             )
 
@@ -112,7 +116,7 @@ class ElevenLabsTTS(commands.Cog):
             if voice_channel is None:
                 return await self.bot.messaging.edit_embed(
                     message=response,
-                    color=Colors.RED.value,
+                    color=discord.Color.red(),
                     text="Failed! You must be in a voice channel to play a message.",
                 )
 
@@ -126,7 +130,7 @@ class ElevenLabsTTS(commands.Cog):
 
                 # Update embed to show processing
                 await self.bot.messaging.edit_embed(
-                    message=response, color=Colors.BLUE.value, footer=footer
+                    message=response, color=discord.Color.blue(), footer=footer
                 )
 
                 # Play the audio
@@ -135,13 +139,15 @@ class ElevenLabsTTS(commands.Cog):
 
                 # Update embed to show success
                 await self.bot.messaging.edit_embed(
-                    message=response, color=Colors.GREEN.value
+                    message=response, color=discord.Color.green()
                 )
 
             except Exception as e:
                 logging.error(f"Failed to process TTS: {e}")
                 await self.bot.messaging.edit_embed(
-                    message=response, color=Colors.RED.value, text=f"Failed! {str(e)}"
+                    message=response,
+                    color=discord.Color.red(),
+                    text=f"Failed! {str(e)}",
                 )
 
         except Exception as e:
@@ -149,7 +155,7 @@ class ElevenLabsTTS(commands.Cog):
             if "response" in locals():
                 await self.bot.messaging.edit_embed(
                     message=response,
-                    color=Colors.RED.value,
+                    color=discord.Color.red(),
                     text=f"An unexpected error occurred: {str(e)}",
                 )
 
@@ -217,7 +223,7 @@ class TTS:
         elevenlabs: ElevenLabsTTS,
         text: str,
         voice: Voice,
-        tts_path: str,
+        tts_path: pathlib.Path,
         message_id: str,
     ):
         """Initialize the TTS object.

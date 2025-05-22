@@ -5,7 +5,7 @@ __pycache__/
 .vscode/
 
 # Audio files
-tts-discord/
+audio/
 
 # Database
 cogs/common/database.sqlite
