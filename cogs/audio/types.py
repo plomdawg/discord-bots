@@ -41,19 +41,12 @@ class AudioTrack:
         # Spotify URL for the track
         self.spotify_url = kwargs.get("spotify_url")
 
-    def ffmpeg_options(self):
-        """Returns the ffmpeg options for the track."""
-        # -ss skips ahead to the current position in the track.
-        # -af loudnorm normalizes the audio.
-        # -ac 2 forces stereo output
-        # -ar 48000 sets sample rate to 48kHz
-        return f"-ss {self.position} -af loudnorm=I=-16.0:TP=-1.0 -ac 2 -ar 48000"
-
     def audio_source(self, volume: float) -> discord.PCMVolumeTransformer:
         """Returns an appropriate audio source for this track."""
         source = self.source_url or str(self.path)
+        ffmpeg_options = f"-ss {self.position}"
         return discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(source=source, options=self.ffmpeg_options()),
+            discord.FFmpegPCMAudio(source=source, options=ffmpeg_options),
             volume=volume,
         )
 
