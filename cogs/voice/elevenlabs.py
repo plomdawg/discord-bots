@@ -10,11 +10,11 @@ import discord
 import pydub
 from discord.ext import commands
 from elevenlabs.client import ElevenLabs
-from elevenlabs.types.voice import Voice
+from elevenlabs.types.voice import Voice as ElevenLabsVoice
 
 from cogs.audio.types import AudioTrack
-from cogs.common.messaging import bold, code
 from cogs.common import utils
+from cogs.common.messaging import bold, code
 
 if TYPE_CHECKING:
     from bots.voicebot import VoiceBot
@@ -26,6 +26,35 @@ AUDIO_DIRECTORY = pathlib.Path("audio/tts")
 AUDIO_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 
+class VoiceWrapper:
+    """Wrapper class that adds an alias and avatar property to ElevenLabs voices."""
+
+    def __init__(self, voice: ElevenLabsVoice):
+        self.voice = voice
+
+    @property
+    def alias(self) -> str:
+        """Get the alias of the voice."""
+        assert self.voice.name is not None
+        name_remapping = {
+            "Sexy Female Villain Voice": "Sexy",
+        }
+        return name_remapping.get(self.voice.name, self.voice.name)
+
+    @property
+    def avatar(self) -> typing.Optional[str]:
+        """Get the avatar of the voice."""
+        avatars = {
+            "Cooper": "https://i.imgur.com/3kXop0E.png",
+            "Sexy": "https://i.imgur.com/xzeKYDH.png",
+        }
+        return avatars.get(self.alias)
+
+    def __getattr__(self, name):
+        """Delegate all other attributes to the wrapped voice."""
+        return getattr(self.voice, name)
+
+
 class ElevenLabsTTS(commands.Cog):
     def __init__(self, bot: "VoiceBot"):
         self.bot = bot
@@ -33,10 +62,10 @@ class ElevenLabsTTS(commands.Cog):
         self.client = ElevenLabs(api_key=api_key)
 
         response = self.client.voices.get_all()
-        self.voices = response.voices
+        self.voices = [VoiceWrapper(voice) for voice in response.voices]
         self.bot.log(f"Loaded {len(self.voices)} voices from ElevenLabs.")
 
-    def get_voice(self, message) -> typing.Optional[Voice]:
+    def get_voice(self, message) -> typing.Optional[VoiceWrapper]:
         """Get the voice for a message from the first word before the colon.
         Args:
             message: The message to get the voice for.
@@ -87,7 +116,7 @@ class ElevenLabsTTS(commands.Cog):
             )
 
             # Build the footer text
-            footer_parts = [f"- {tts.voice.name}", f"(by @{message.author.name})"]
+            footer_parts = [f"- {voice.alias}", f"(by @{message.author.name})"]
 
             # Add replay info if applicable
             if user != message.author or tts.is_cached:
@@ -104,7 +133,9 @@ class ElevenLabsTTS(commands.Cog):
                 channel=message.channel,
                 text=tts.quoted_text,
                 color=discord.Color.light_gray(),
+                thumbnail=voice.avatar,
                 footer=footer,
+                footer_icon=message.author.display_avatar.url,
             )
 
             # Add replay button
@@ -130,7 +161,11 @@ class ElevenLabsTTS(commands.Cog):
 
                 # Update embed to show processing
                 await self.bot.messaging.edit_embed(
-                    message=response, color=discord.Color.blue(), footer=footer
+                    message=response,
+                    color=discord.Color.blue(),
+                    thumbnail=voice.avatar,
+                    footer=footer,
+                    footer_icon=message.author.display_avatar.url,
                 )
 
                 # Play the audio
@@ -201,7 +236,7 @@ class TTS:
         self,
         elevenlabs: ElevenLabsTTS,
         text: str,
-        voice: Voice,
+        voice: VoiceWrapper,
         tts_path: pathlib.Path,
         message_id: str,
     ):
