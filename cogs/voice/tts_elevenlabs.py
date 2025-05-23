@@ -5,7 +5,7 @@ from typing import List
 
 from elevenlabs.client import ElevenLabs
 
-from cogs.voice.types import TTSGenerator, Voice
+from cogs.voice.tts_types import TTSGenerator, Voice
 
 AVATARS = {
     "Cooper": "https://i.imgur.com/3kXop0E.png",

@@ -10,7 +10,7 @@ from cogs.common import utils
 from cogs.common.messaging import bold, code, quoted_text
 from cogs.voice.tts_elevenlabs import get_voices as get_elevenlabs_voices
 from cogs.voice.tts_piper import get_voices as get_piper_voices
-from cogs.voice.types import Voice
+from cogs.voice.tts_types import Voice
 
 if TYPE_CHECKING:
     from bots.voicebot import VoiceBot

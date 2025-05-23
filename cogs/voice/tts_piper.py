@@ -7,7 +7,7 @@ from typing import List
 import requests
 from piper import PiperVoice
 
-from cogs.voice.types import TTSGenerator, Voice
+from cogs.voice.tts_types import TTSGenerator, Voice
 
 # Voice configurations
 VOICES = [
