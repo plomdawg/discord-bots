@@ -1,5 +1,6 @@
 import pathlib
 import random
+import time
 from typing import TYPE_CHECKING, List, Optional
 
 import discord
@@ -76,17 +77,22 @@ class TTS(commands.Cog):
             message: The Discord message containing the TTS request
             user: The user who triggered the TTS (may be different from message author)
         """
+        if not await self.bot.utils.author_has_voice(message, "use TTS"):
+            return
+
+        # Remove the existing replay button.
+        await self.bot.messaging.remove_reactions(message)
+
+        # Extract and validate the text
+        text = message.content[len(self.bot.prefix) :].strip()
+        if len(text) > MAX_TTS_LENGTH:
+            error = (
+                f"Message too long, please keep it under {MAX_TTS_LENGTH} characters."
+            )
+            return await self.fail(message, error)
+
         try:
-            # Remove the existing replay button.
-            await self.bot.messaging.remove_reactions(message)
-
-            # Extract and validate the text
-            text = message.content[len(self.bot.prefix) :].strip()
-            if len(text) > MAX_TTS_LENGTH:
-                error = f"Message too long, please keep it under {MAX_TTS_LENGTH} characters."
-                return await self.fail(message, error)
-
-            # Get the voice and create TTS instance
+            # Get the voice and create TTS instance.
             voice = self.get_voice(message)
             if voice and " " in text:
                 text = text.split(" ", 1)[1].strip()
@@ -127,17 +133,19 @@ class TTS(commands.Cog):
             # Add replay button
             await self.bot.messaging.add_reactions(message, ["🔄"])
 
-            # Get user's voice channel
-            assert isinstance(message.guild, discord.Guild)
-            voice_channel = self.bot.utils.get_voice_channel(user, message.guild.id)
-            if voice_channel is None:
-                error = "You must be in a voice channel to play a message."
-                return await self.fail(message, error)
-
             # Generate and save the audio
+            start_time = time.time()
             try:
-                voice.save_audio(text, mp3_path)
+                if not mp3_path.exists():
+                    self.log(f"[{voice.name}] Generating TTS audio: {mp3_path}")
+                    voice.save_audio(text, mp3_path)
+            except Exception as e:
+                return await self.fail(message, str(e))
 
+            duration = time.time() - start_time
+            self.log(f"Generated in {duration:.2f} seconds")
+            footer += f" (in {duration:.2f} seconds)"
+            try:
                 # Update embed to show processing
                 await self.bot.messaging.edit_embed(
                     message=response,
@@ -149,7 +157,7 @@ class TTS(commands.Cog):
 
                 # Play the audio
                 track = AudioTrack(name=mp3_path.stem, path=mp3_path)
-                await self.bot.audio.play(voice_channel, track)
+                await self.bot.audio.play(user.voice.channel, track)
 
                 # Update embed to show success
                 await self.bot.messaging.edit_embed(
