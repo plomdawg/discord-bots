@@ -27,19 +27,25 @@ class TTS(commands.Cog):
         self.bot = bot
         self.voices: List[Voice] = []
 
+    def log(self, message: str):
+        """Log a message to the bot."""
+        self.bot.log(f"[TTS] {message}")
+
     @commands.Cog.listener()
     async def on_ready(self):
         """Load the voices."""
         voices = get_elevenlabs_voices(self.bot.secrets.get("ELEVENLABS_API_KEY"))
-        self.bot.log(f"Loaded {len(voices)} voices from ElevenLabs:")
+        self.log(f"Loaded {len(voices)} voices from ElevenLabs:")
         for voice in voices:
-            self.bot.log(f" - [{voice.category}] {voice.name} - {voice.description}")
+            self.log(f" - [{voice.category}] {voice.name} - {voice.description}")
         self.voices.extend(voices)
         voices = get_piper_voices()
         self.voices.extend(voices)
-        self.bot.log(f"Loaded {len(voices)} voices from Piper:")
+        self.log(f"Loaded {len(voices)} voices from Piper:")
         for voice in voices:
-            self.bot.log(f" - [{voice.category}] {voice.name} - {voice.description}")
+            self.log(f" - [{voice.category}] {voice.name} - {voice.description}")
+
+        self.log("Done loading voices")
 
     def get_voice(self, message) -> Optional[Voice]:
         """Get the voice for a message from the first word before the colon.
@@ -149,7 +155,6 @@ class TTS(commands.Cog):
                 await self.bot.messaging.edit_embed(
                     message=response, color=discord.Color.green()
                 )
-
             except Exception as e:
                 return await self.fail(message, str(e))
 

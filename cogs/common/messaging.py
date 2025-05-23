@@ -296,11 +296,14 @@ class Messaging(commands.Cog):
         except discord.errors.NotFound:
             pass
 
-    async def send_error(self, channel, error, thumbnail=None):
+    async def send_error(self, channel, text, thumbnail=None):
         """Sends an error message to a channel."""
-        text = f"Error:\n```{error}```"
         return await self.send_embed(
-            channel, color=0xFF0000, title="Error", text=text, thumbnail=thumbnail
+            channel,
+            color=discord.Color.red(),
+            title="Error",
+            text=text,
+            thumbnail=thumbnail,
         )
 
 
