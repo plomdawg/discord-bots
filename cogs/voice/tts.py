@@ -9,6 +9,7 @@ from cogs.audio.types import AudioTrack
 from cogs.common import utils
 from cogs.common.messaging import bold, code, quoted_text
 from cogs.voice.tts_elevenlabs import get_voices as get_elevenlabs_voices
+from cogs.voice.tts_piper import get_voices as get_piper_voices
 from cogs.voice.types import Voice
 
 if TYPE_CHECKING:
@@ -29,9 +30,15 @@ class TTS(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """Load the voices."""
-        self.voices = get_elevenlabs_voices(self.bot.secrets.get("ELEVENLABS_API_KEY"))
-        self.bot.log(f"Loaded {len(self.voices)} voices from ElevenLabs:")
-        for voice in self.voices:
+        voices = get_elevenlabs_voices(self.bot.secrets.get("ELEVENLABS_API_KEY"))
+        self.bot.log(f"Loaded {len(voices)} voices from ElevenLabs:")
+        for voice in voices:
+            self.bot.log(f" - [{voice.category}] {voice.name} - {voice.description}")
+        self.voices.extend(voices)
+        voices = get_piper_voices()
+        self.voices.extend(voices)
+        self.bot.log(f"Loaded {len(voices)} voices from Piper:")
+        for voice in voices:
             self.bot.log(f" - [{voice.category}] {voice.name} - {voice.description}")
 
     def get_voice(self, message) -> Optional[Voice]:
@@ -171,20 +178,23 @@ class TTS(commands.Cog):
 
     async def send_help(self, channel):
         """Send the help message to the channel."""
-        text = f"{bold('Usage')}: `{self.bot.prefix}[text]` or `{self.bot.prefix}[voice] [text]`\n"
-        text += "-----------\n"
-        text += f"{bold('Built-in voices')}:\n"
-        for voice in self.voices:
-            if voice.category == "premade":
-                text += f" {code(voice.name)}"
+        categories = set(voice.category for voice in self.voices)
+        line = "-----------\n"
+        text = (
+            f"Usage: `{self.bot.prefix}[text]` or `{self.bot.prefix}[voice] [text]`\n\n"
+        )
+        for category in sorted(categories):
+            text += f"{bold(category)} voices:\n"
+            for voice in sorted(self.voices, key=lambda v: v.name):
+                if voice.category == category:
+                    text += f" {code(voice.name)}"
+            text += "\n"
+            text += line
 
-        text += "\n-----------\n"
-        text += f"{bold('Custom voices')}:\n"
-        for voice in self.voices:
-            if voice.category != "premade":
-                text += f" {code(voice.name)}"
-
-        await self.bot.messaging.send_embed(channel, text=text)
+        text = text[: -len(line)]  # Remove the last line break.
+        await self.bot.messaging.send_embed(
+            channel, text=text, color=discord.Color.dark_purple()
+        )
 
 
 async def setup(bot: "VoiceBot"):

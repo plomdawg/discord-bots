@@ -68,11 +68,12 @@ def get_voices(api_key: str) -> List[Voice]:
     response = client.voices.get_all()
     for voice in response.voices:
         name = NAMES.get(voice.name, voice.name)
+        category = f"ElevenLabs {voice.category}"
         voices.append(
             Voice(
                 name=name,
                 description=voice.description,
-                category=voice.category,
+                category=category,
                 avatar=AVATARS.get(name),
                 generator=ElevenLabsGenerator(client, voice.voice_id),
             )

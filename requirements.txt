@@ -6,6 +6,9 @@ PyNaCl
 # Used to normalize audio levels and combine audio files.
 pydub
 
+# Piper TTS for local text-to-speech
+piper-tts
+
 # ElevenLabs API
 elevenlabs
 
