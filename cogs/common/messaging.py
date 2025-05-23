@@ -30,6 +30,20 @@ def code(text):
     return f"`{text}`"
 
 
+def quoted_text(text: str) -> str:
+    """Get the quoted text from the message.
+
+    Args:
+        text: The text to quote
+
+    Returns:
+        str: The quoted text with > prefix on each line
+    """
+    lines = text.split("\n")
+    quoted_lines = [f" > {line}" for line in lines]
+    return "\n".join(quoted_lines)
+
+
 class Messaging(commands.Cog):
     def __init__(self, bot: "DiscordBot"):
         # Store the bot instance so we can access it inside the cog.

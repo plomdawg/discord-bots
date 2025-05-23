@@ -4,8 +4,6 @@ This file is the main entry point for the Voice bot.
 
 import asyncio
 
-import discord
-
 from bot import DiscordBot
 
 
@@ -15,7 +13,7 @@ class VoiceBot(DiscordBot):
         self.prefix = ";"
 
     async def start(self):
-        await self.load_cog("voice.elevenlabs", "ElevenLabsTTS")
+        await self.load_cog("voice.tts", "TTS")
         await super().start(token=self.secrets.get("VOICEBOT_DISCORD_SECRET_TOKEN"))
 
     async def on_ready(self):
