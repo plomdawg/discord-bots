@@ -9,6 +9,11 @@ pydub
 # Piper TTS for local text-to-speech
 piper-tts
 
-# ElevenLabs API
+# ElevenLabs TTS API
 elevenlabs
 
+# Gemini API
+google-genai
+
+# PIL
+pillow

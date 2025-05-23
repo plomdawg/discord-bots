@@ -3,11 +3,13 @@ This file is the main entry point for the Test bot.
 """
 
 import asyncio
+import pathlib
 import typing
 
 import discord
 
 from bot import DiscordBot
+from cogs.gemini import Gemini
 from cogs.test import Test
 
 MY_DUDES = discord.Object(id=408172061723459584)
@@ -22,7 +24,8 @@ class TestBot(DiscordBot):
         # Load the test cog.
         await self.load_cog("test", "Test")
         self.test = typing.cast(Test, self.get_cog("Test"))
-
+        await self.load_cog("gemini", "Gemini")
+        self.gemini = typing.cast(Gemini, self.get_cog("Gemini"))
         await super().start()
 
     async def setup_hook(self):
@@ -40,8 +43,14 @@ class TestBot(DiscordBot):
         # Change discord status to "Watching __ servers"
         await self.set_activity(f"Watching {len(self.guilds)} servers")
 
+        # Test the gemini cog.
+        self.gemini.generate_image(
+            prompt="A beautiful sunset over a calm ocean",
+            path=pathlib.Path("sunset.png"),
+        )
+
         # Test the messaging cog.
-        await self.test.test_messaging_cog(channel_id=TEST_CHANNEL.id)
+        # await self.test.test_messaging_cog(channel_id=TEST_CHANNEL.id)
 
 
 async def main():

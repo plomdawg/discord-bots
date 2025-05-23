@@ -4,8 +4,9 @@ __pycache__/
 # VS Code
 .vscode/
 
-# Audio files
+# Generated files
 audio/
+images/
 
 # Local AI voice models
 models/

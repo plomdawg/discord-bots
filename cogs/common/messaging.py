@@ -30,6 +30,11 @@ def code(text):
     return f"`{text}`"
 
 
+def code_block(text):
+    """Returns a code block version of the text."""
+    return f"```{text}```"
+
+
 def quoted_text(text: str) -> str:
     """Get the quoted text from the message.
 
@@ -201,6 +206,19 @@ class Messaging(commands.Cog):
             last_response = await self._send_single_embed(channel, embed)
 
         return last_response
+
+    async def send_image(self, channel, image, text=None):
+        """Sends an image to a channel, optionally with text.
+
+        Args:
+            channel: The channel to send the image to (can be a channel or interaction)
+            image: The image to send (can be a file path or file-like object)
+            text: Optional text to send with the image
+
+        Returns:
+            The discord.Message of the sent message
+        """
+        return await channel.send(content=text, file=discord.File(image))
 
     async def edit_embed(
         self,
