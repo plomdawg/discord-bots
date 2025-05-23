@@ -49,7 +49,16 @@ class PiperGenerator(TTSGenerator):
             voice_path: Path to the voice model file (.onnx)
             config_path: Path to the voice config file (.json)
         """
-        self.voice = PiperVoice.load(voice_path, config_path)
+        self.voice_path = voice_path
+        self.config_path = config_path
+        self._voice = None
+
+    @property
+    def voice(self) -> PiperVoice:
+        """Lazy load the voice model when needed."""
+        if self._voice is None:
+            self._voice = PiperVoice.load(self.voice_path, self.config_path)
+        return self._voice
 
     def save_audio(self, text: str, path: pathlib.Path) -> pathlib.Path:
         """Generate audio bytes from text using the specified voice.
