@@ -5,6 +5,9 @@ This cog provides Gemini AI API functionality.
 import pathlib
 from io import BytesIO
 from typing import TYPE_CHECKING, Optional
+import os
+import glob
+import math
 
 import discord
 from discord.ext import commands
@@ -168,6 +171,113 @@ class Gemini(commands.Cog):
             prompt=prompt,
             image=image,
         )
+
+    # Add the /last command
+    @discord.app_commands.command(
+        name="last", description="Create a collage of the most recent generated images."
+    )
+    @discord.app_commands.describe(number="Number of recent images to include in collage (default: 4)")
+    async def last(self, interaction: discord.Interaction, number: int = 4):
+        """Create a collage of the most recent images from the images folder."""
+        await interaction.response.defer()
+        
+        try:
+            # Use the existing IMAGE_DIRECTORY
+            if not IMAGE_DIRECTORY.exists():
+                await self.bot.messaging.send_embed(
+                    interaction.followup,
+                    text="No images directory found!",
+                    color=discord.Color.red(),
+                )
+                return
+            
+            # Get all image files sorted by modification time (most recent first)
+            image_files = []
+            for ext in ['*.png', '*.jpg', '*.jpeg', '*.gif', '*.webp']:
+                image_files.extend(glob.glob(str(IMAGE_DIRECTORY / ext)))
+            
+            if not image_files:
+                await self.bot.messaging.send_embed(
+                    interaction.followup,
+                    text="No images found in the images directory!",
+                    color=discord.Color.red(),
+                )
+                return
+            
+            # Sort by modification time (newest first) and take the requested number
+            image_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            recent_files = image_files[:number]
+            
+            if len(recent_files) == 0:
+                await self.bot.messaging.send_embed(
+                    interaction.followup,
+                    text="No recent images found!",
+                    color=discord.Color.red(),
+                )
+                return
+            
+            # Create collage using existing IMAGE_DIRECTORY
+            collage_path = IMAGE_DIRECTORY / f"collage_{interaction.id}.png"
+            self.create_collage(recent_files, collage_path)
+            
+            # Send the collage using existing messaging system
+            await self.bot.messaging.send_image(interaction.followup, collage_path)
+            
+            # Clean up the temporary collage file
+            try:
+                os.remove(collage_path)
+            except:
+                pass
+                
+        except Exception as e:
+            self.log(f"Error creating collage: {e}")
+            await self.bot.messaging.send_embed(
+                interaction.followup,
+                text=f"Failed to create collage: {str(e)}",
+                color=discord.Color.red(),
+            )
+    
+    def create_collage(self, image_paths: list, output_path: pathlib.Path):
+        """Create a collage from the given image paths."""
+        # Calculate grid dimensions to fit all images
+        num_images = len(image_paths)
+        
+        if num_images == 1:
+            cols, rows = 1, 1
+        else:
+            # Calculate square-ish grid that fits all images
+            cols = math.ceil(math.sqrt(num_images))
+            rows = math.ceil(num_images / cols)
+        
+        # Calculate individual image size to fit in 2000x2000
+        img_width = 2000 // cols
+        img_height = 2000 // rows
+        
+        # Create the collage canvas
+        collage = Image.new('RGB', (2000, 2000), (255, 255, 255))
+        
+        for i, img_path in enumerate(image_paths):
+            try:
+                # Open and resize image
+                img = Image.open(img_path)
+                img = img.convert('RGB')
+                img = img.resize((img_width, img_height), Image.Resampling.LANCZOS)
+                
+                # Calculate position
+                col = i % cols
+                row = i // cols
+                x = col * img_width
+                y = row * img_height
+                
+                # Paste image onto collage
+                collage.paste(img, (x, y))
+                
+            except Exception as e:
+                self.log(f"Error processing image {img_path}: {e}")
+                continue
+        
+        # Save the collage
+        collage.save(output_path, 'PNG')
 
 
 async def setup(bot):
