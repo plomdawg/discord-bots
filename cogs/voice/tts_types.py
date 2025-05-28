@@ -1,5 +1,5 @@
 import pathlib
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class TTSGenerator(Protocol):
@@ -37,8 +37,8 @@ class Voice:
         name: str,
         category: str,
         generator: TTSGenerator,
-        avatar: Optional[str] = None,
-        description: Optional[str] = None,
+        avatar: str = "",
+        description: str = "",
     ):
         self.name = name
         self.category = category

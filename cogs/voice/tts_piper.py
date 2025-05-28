@@ -133,9 +133,9 @@ def get_voices() -> List[Voice]:
 
     # Download all voices if not present
     for voice_config in VOICES:
-        name = voice_config.get("name").lower()
-        language = voice_config.get("language")
-        quality = voice_config.get("quality")
+        name = voice_config.get("name", "").lower()
+        language = voice_config.get("language", "")
+        quality = voice_config.get("quality", "")
         voice_path = models_dir / f"{name}-{language}-{quality}.onnx"
         config_path = models_dir / f"{name}-{language}-{quality}.onnx.json"
 
@@ -148,13 +148,13 @@ def get_voices() -> List[Voice]:
             download_file(f"{base_url}.onnx?download=true", voice_path)
             download_file(f"{base_url}.onnx.json?download=true", config_path)
 
-        voice_name = voice_config.get("alias", voice_config.get("name"))
+        voice_name = voice_config.get("alias", voice_config.get("name", ""))
         voices.append(
             Voice(
                 name=voice_name,
-                description=voice_config.get("description"),
-                category=voice_config.get("category"),
-                avatar=voice_config.get("avatar"),
+                description=voice_config.get("description", ""),
+                category=voice_config.get("category", ""),
+                avatar=voice_config.get("avatar", ""),
                 generator=PiperGenerator(str(voice_path), str(config_path)),
             )
         )
