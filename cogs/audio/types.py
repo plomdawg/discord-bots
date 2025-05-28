@@ -188,8 +188,7 @@ class AudioQueue:
 
         # Non-empty queue - add shuffle button
         if self.tracks:
-            action = {"🔀": self.shuffle}
-            await self.bot.emoji.add_actions(self.queue_message, action)
+            await self.bot.messaging.add_reactions(self.queue_message, ["🔀"])
 
         return self.queue_message
 
@@ -232,24 +231,51 @@ class AudioPlayer:
 
     async def connect(self, voice_channel):
         """Connects to a voice channel. Returns the voice channel or None if error"""
-        # Find the voice client for this server
-        if self.voice_client is None:
-            self.voice_client = discord.utils.get(
-                self.bot.voice_clients, guild=voice_channel.guild
-            )
+        # Check if we already have a connected voice client
+        if self.voice_client and self.voice_client.is_connected():
+            # Move to the user if nobody is in the room with the bot
+            if len(self.voice_client.channel.members) == 1:
+                await self.voice_client.move_to(voice_channel)
+            return self.voice_client
 
+        # Find the voice client for this server
+        self.voice_client = discord.utils.get(
+            self.bot.voice_clients, guild=voice_channel.guild
+        )
+
+        # If we found an existing client but it's not connected, clean it up
+        if self.voice_client and not self.voice_client.is_connected():
+            try:
+                await self.voice_client.disconnect(force=True)
+            except:
+                pass
+            self.voice_client = None
+
+        # Connect if we don't have a connected client
         if self.voice_client is None:
             try:
                 self.voice_client = await voice_channel.connect()
-                while not self.voice_client.is_connected():
-                    await asyncio.sleep(1)
-            except discord.errors.ClientException:
-                pass
-            except asyncio.TimeoutError:
-                pass
+                # Wait for connection to be established
+                timeout = 10  # 10 second timeout
+                while not self.voice_client.is_connected() and timeout > 0:
+                    await asyncio.sleep(0.1)
+                    timeout -= 0.1
+
+                if not self.voice_client.is_connected():
+                    self.bot.error(
+                        "Failed to establish voice connection within timeout"
+                    )
+                    return None
+
+            except discord.errors.ClientException as e:
+                self.bot.error(f"ClientException during voice connect: {e}")
+                return None
+            except asyncio.TimeoutError as e:
+                self.bot.error(f"TimeoutError during voice connect: {e}")
+                return None
 
         # Move to the user if nobody is in the room with the bot
-        if self.voice_client is not None:
+        if self.voice_client is not None and self.voice_client.is_connected():
             if len(self.voice_client.channel.members) == 1:
                 await self.voice_client.move_to(voice_channel)
 
@@ -257,10 +283,14 @@ class AudioPlayer:
 
     async def play(self, channel: discord.VoiceChannel) -> None:
         """Starts playback in the given voice channel."""
-        await self.connect(channel)
+        voice_client = await self.connect(channel)
 
-        if self.voice_client is None:
-            raise RuntimeError("Voice client not found")
+        if voice_client is None or not voice_client.is_connected():
+            self.bot.error("Failed to connect to voice channel")
+            self.status = AudioPlayerStatus.STOPPED
+            return
+
+        self.voice_client = voice_client
 
         # If the player is already playing, do nothing.
         if self.status == AudioPlayerStatus.PLAYING:
@@ -268,7 +298,9 @@ class AudioPlayer:
 
         # If the player is paused, just resume.
         if self.status == AudioPlayerStatus.PAUSED:
-            self.voice_client.resume()
+            if self.voice_client.is_connected():
+                self.voice_client.resume()
+                self.status = AudioPlayerStatus.PLAYING
             return
 
         # If there is no track, stop the player.
@@ -281,22 +313,31 @@ class AudioPlayer:
 
         # Get the audio source for the track.
         audio_source = self.queue.current_track.audio_source(volume=self.volume)
+        self.current_source = audio_source
 
         def next_track(err=None):
             if err:
                 self.bot.error(f"During playback: {err}")
             # Set the status to stopped before moving on.
             self.status = AudioPlayerStatus.STOPPED
+            self.current_source = None
             # Move on to the next track in the queue.
             self.queue.increment_position()
-            self.bot.loop.create_task(self.play(channel))
+            # Only continue if we still have tracks and are connected
+            if self.queue.current_track is not None:
+                self.bot.loop.create_task(self.play(channel))
 
         # Begin playback.
         try:
-            self.voice_client.play(audio_source, after=next_track)
+            if self.voice_client.is_connected():
+                self.voice_client.play(audio_source, after=next_track)
+            else:
+                self.bot.error("Voice client not connected when trying to play")
+                self.status = AudioPlayerStatus.STOPPED
         except Exception as e:
             self.bot.error(f"Starting playback: {e}")
             self.status = AudioPlayerStatus.STOPPED
+            self.current_source = None
 
     def set_volume(self, volume: float) -> float:
         """Set the player volume (0.0 to 1.0)."""
