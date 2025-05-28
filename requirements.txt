@@ -1,7 +1,12 @@
 # Discord.py library
 # https://github.com/Rapptz/discord.py
 discord.py[voice]
-PyNaCl
+
+# Used to color output logs.
+colorama
+
+# Database
+pony
 
 # Used to normalize audio levels and combine audio files.
 pydub
