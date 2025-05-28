@@ -22,3 +22,7 @@ google-genai
 
 # PIL
 pillow
+
+# Lyrics Genius API
+lyricsgenius
+

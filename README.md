@@ -36,19 +36,12 @@ discord-bots/
 ## Setup
 
 1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Export keys as environment variables:
+2. Export keys as environment variables (see [docker-compose.yml](docker-compose.yml) for full list of keys)
    ```bash
    export DISCORD_BOT_CLIENT_ID="123456789012345678"
    export DISCORD_BOT_SECRET_TOKEN="Abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz"
    ```
-4. Run the desired bots:
+3. Run the bots using docker:
    ```bash
-   python -m bots.dotabot
-   python -m bots.musicbot
-   python -m bots.testbot
-   python -m bots.voicebot
+   docker compose up
    ```

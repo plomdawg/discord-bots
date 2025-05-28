@@ -1,0 +1,48 @@
+services:
+  dotabot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DOTABOT_DISCORD_CLIENT_ID=${DOTABOT_DISCORD_CLIENT_ID}
+      - DOTABOT_DISCORD_SECRET_TOKEN=${DOTABOT_DISCORD_SECRET_TOKEN}
+    volumes:
+      - .:/app
+    command: python -m bots.dotabot
+
+  musicbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - MUSICBOT_DISCORD_CLIENT_ID=${MUSICBOT_DISCORD_CLIENT_ID}
+      - MUSICBOT_DISCORD_SECRET_TOKEN=${MUSICBOT_DISCORD_SECRET_TOKEN}
+      - GENIUS_API_KEY=${GENIUS_API_KEY}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+    volumes:
+      - .:/app
+    command: python -m bots.musicbot
+
+  voicebot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - VOICEBOT_DISCORD_CLIENT_ID=${VOICEBOT_DISCORD_CLIENT_ID}
+      - VOICEBOT_DISCORD_SECRET_TOKEN=${VOICEBOT_DISCORD_SECRET_TOKEN}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - FISH_API_KEY=${FISH_API_KEY}
+    volumes:
+      - .:/app
+    command: python -m bots.voicebot
+
+#    deploy:
+#      resources:
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: all
+#              capabilities: [ gpu ]
