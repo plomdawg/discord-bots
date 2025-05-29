@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class DotaWiki(commands.Cog):
-    def __init__(self, bot: DotaBot):
+    def __init__(self, bot: "DotaBot"):
         self.bot = bot
 
 

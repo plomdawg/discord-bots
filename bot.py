@@ -65,19 +65,19 @@ class DiscordBot(commands.Bot):
 
     async def setup_hook(self):
         """
-        Setup the bot by syncing commands to all guilds.
+        Setup the bot by syncing commands to all servers.
         """
         commands = self.tree.get_commands()
         if len(commands) == 0:
             self.log("No commands to sync")
             return
-        self.log(f"Syncing {len(commands)} commands to all guilds:")
+        self.log(f"Syncing {len(commands)} commands to all servers:")
         for command in commands:
             assert isinstance(command, discord.app_commands.Command)
             self.log(f"   /{command.name} - {command.description}")
 
         await self.tree.sync()
-        self.log("Done syncing commands to all guilds")
+        self.log("Done syncing commands to all servers")
 
     @property
     def invite_link(self) -> str:
@@ -149,6 +149,14 @@ class DiscordBot(commands.Bot):
 
         # Print all servers the bot is in
         self.utils.server_info()  # type: ignore
+
+    async def on_error(self, event: str, *args, **kwargs):
+        """
+        Called when an error occurs.
+        """
+        import traceback
+
+        self.error(f"Error in event '{event}': {traceback.format_exc()}")
 
     async def set_activity(self, activity: str):
         """Sets the bot's activity based on a string.

@@ -111,14 +111,15 @@ class Messaging(commands.Cog):
                 embed.set_footer(text=footer)
         return embed
 
-    async def _send_single_embed(self, channel, embed):
+    async def _send_embed(self, channel, embed: discord.Embed) -> discord.Message:
         """Sends a single embed message to the channel."""
         if type(channel) == discord.interactions.Interaction:
             response = await channel.response.send_message(embed=embed)
+            assert isinstance(response.resource, discord.Message)
             return response.resource
         return await channel.send(embed=embed)
 
-    def _split_text_into_chunks(self, text):
+    def _split_text_into_chunks(self, text: str) -> list[str]:
         """Splits text into chunks that fit within Discord's message length limit."""
         chunks = []
         lines = text.split("\n")
@@ -179,7 +180,7 @@ class Messaging(commands.Cog):
             )
             if text is not None:
                 embed.description = text
-            return await self._send_single_embed(channel, embed)
+            return await self._send_embed(channel, embed)
 
         # Handle long text by splitting into chunks
         chunks = self._split_text_into_chunks(text)
@@ -204,7 +205,7 @@ class Messaging(commands.Cog):
                 else:
                     embed.set_footer(text=footer)
 
-            last_response = await self._send_single_embed(channel, embed)
+            last_response = await self._send_embed(channel, embed)
 
         return last_response
 
