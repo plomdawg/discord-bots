@@ -114,7 +114,8 @@ class Messaging(commands.Cog):
     async def _send_single_embed(self, channel, embed):
         """Sends a single embed message to the channel."""
         if type(channel) == discord.interactions.Interaction:
-            return await channel.response.send_message(embed=embed)
+            response = await channel.response.send_message(embed=embed)
+            return response.resource
         return await channel.send(embed=embed)
 
     def _split_text_into_chunks(self, text):
@@ -220,6 +221,25 @@ class Messaging(commands.Cog):
         """
         return await channel.send(content=text, file=discord.File(image))
 
+    async def send_file(self, channel, file_path, text=None, filename=None):
+        """Sends a file to a channel, optionally with text.
+
+        Args:
+            channel: The channel to send the file to (can be a channel or interaction)
+            file_path: The file to send (can be a file path or file-like object)
+            text: Optional text to send with the file
+            filename: Optional custom filename for the file
+
+        Returns:
+            The discord.Message of the sent message
+        """
+        discord_file = (
+            discord.File(file_path, filename=filename)
+            if filename
+            else discord.File(file_path)
+        )
+        return await channel.send(content=text, file=discord_file)
+
     async def edit_embed(
         self,
         message,
@@ -316,6 +336,9 @@ class Messaging(commands.Cog):
 
     async def send_error(self, channel, text, thumbnail=None):
         """Sends an error message to a channel."""
+        if len(text) > MAX_MSG_LENGTH:
+            text = text[: MAX_MSG_LENGTH - 3] + "..."
+
         return await self.send_embed(
             channel,
             color=discord.Color.red(),
