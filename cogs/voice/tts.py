@@ -9,8 +9,9 @@ from discord.ext import commands
 from cogs.audio.types import AudioTrack
 from cogs.common import utils
 from cogs.common.messaging import bold, code, quoted_text
-from cogs.voice.tts_elevenlabs import get_voices as get_elevenlabs_voices
-from cogs.voice.tts_piper import get_voices as get_piper_voices
+from cogs.voice.tts_elevenlabs import get_elevenlabs_voices
+from cogs.voice.tts_fish import get_fish_voices
+from cogs.voice.tts_piper import get_piper_voices
 from cogs.voice.tts_types import Voice
 
 if TYPE_CHECKING:
@@ -32,34 +33,103 @@ class TTS(commands.Cog):
         """Log a message to the bot."""
         self.bot.log(f"[TTS] {message}")
 
+    @discord.app_commands.command(
+        name="reload-voices", description="Reload the TTS voices"
+    )
+    async def reload_voices(self, interaction: discord.Interaction):
+        """Reload the TTS voices."""
+        start = time.time()
+        self.load_voices()
+        end = time.time()
+        await interaction.response.send_message(
+            f"Voices reloaded in {end - start:.2f} seconds ✔️"
+        )
+
+    def load_voices_from_source(self, get_voices_func, source_name: str):
+        """Load voices from a source and log them.
+
+        Args:
+            get_voices_func: Function that returns a list of voices
+            source_name: Name of the voice source for logging
+        """
+        self.log(f"Loading voices from {source_name}...")
+        voices = get_voices_func()
+        self.log(f"Loaded {len(voices)} voices from {source_name}:")
+        for voice in voices:
+            self.log(f" - [{voice.category}] {voice.name} - {voice.description}")
+        self.voices.extend(voices)
+        return voices
+
     @commands.Cog.listener()
     async def on_ready(self):
         """Load the voices."""
-        voices = get_elevenlabs_voices(self.bot.secrets.get("ELEVENLABS_API_KEY"))
-        self.log(f"Loaded {len(voices)} voices from ElevenLabs:")
-        for voice in voices:
-            self.log(f" - [{voice.category}] {voice.name} - {voice.description}")
-        self.voices.extend(voices)
-        voices = get_piper_voices()
-        self.voices.extend(voices)
-        self.log(f"Loaded {len(voices)} voices from Piper:")
-        for voice in voices:
-            self.log(f" - [{voice.category}] {voice.name} - {voice.description}")
+        self.load_voices()
 
-        self.log("Done loading voices")
+    def load_voices(self):
+        self.voices.clear()
+        # Load ElevenLabs voices
+        # self.load_voices_from_source(
+        #    lambda: get_elevenlabs_voices(self.bot.secrets.get("ELEVENLABS_API_KEY")),
+        #    "ElevenLabs",
+        # )
 
-    def get_voice(self, message) -> Optional[Voice]:
-        """Get the voice for a message from the first word before the colon.
+        # Load Piper voices
+        self.load_voices_from_source(get_piper_voices, "Piper")
+
+        # Load Fish voices
+        self.load_voices_from_source(get_fish_voices, "Fish TTS")
+
+    def get_voice_and_text(self, message) -> "tuple[Voice, str]":
+        """Get the voice for a message and return the cleaned text with voice name removed.
         Args:
             message: The message to get the voice for.
         Returns:
-            voice: The voice for the message or None if no voice is found.
+            tuple: (voice, cleaned_text) where voice is the Voice object (random if no match),
+                   and cleaned_text is the text with the voice name stripped out
         """
-        first_word = message.content.split(" ", 1)[0].strip(self.bot.prefix)
+        # Remove prefix and split into words
+        content_without_prefix = message.content[len(self.bot.prefix) :].strip()
+        words = content_without_prefix.split()
+
+        if not words:
+            # No text at all, return random voice and empty text
+            voice = random.Random(message.id).choice(list(self.voices))
+            return voice, ""
+
+        # Try matching with increasing number of words (up to the full voice name length)
+        best_match = None
+        best_words_matched = 0
+
         for voice in self.voices:
-            if first_word.lower() in voice.name.lower():
-                return voice
-        return None
+            voice_words = voice.name.lower().split()
+
+            # Try matching from 1 word up to the length of the voice name or available words
+            max_words_to_try = min(len(voice_words), len(words))
+
+            for num_words in range(1, max_words_to_try + 1):
+                user_phrase = " ".join(words[:num_words]).lower()
+
+                # Check if this phrase matches any part of the voice name
+                if any(
+                    user_phrase in " ".join(voice_words[i : i + num_words])
+                    for i in range(len(voice_words) - num_words + 1)
+                ):
+                    # Prefer longer matches
+                    if num_words > best_words_matched:
+                        best_match = voice
+                        best_words_matched = num_words
+
+        # If we found a match with at least 3 characters, use it and strip the matched words
+        if best_match and len("".join(words[:best_words_matched])) >= 3:
+            if len(words) > best_words_matched:
+                cleaned_text = " ".join(words[best_words_matched:]).strip()
+            else:
+                cleaned_text = ""  # All words were part of the voice name
+            return best_match, cleaned_text
+
+        # No match found, return random voice and original text
+        voice = random.Random(message.id).choice(list(self.voices))
+        return voice, content_without_prefix
 
     async def fail(self, message: discord.Message, error: str):
         """Send a failure message to the user."""
@@ -92,27 +162,24 @@ class TTS(commands.Cog):
             return await self.fail(message, error)
 
         try:
-            # Get the voice and create TTS instance.
-            voice = self.get_voice(message)
-            if voice and " " in text:
-                text = text.split(" ", 1)[1].strip()
-            else:
-                voice = random.Random(message.id).choice(list(self.voices))
+            # Get the voice and cleaned text
+            voice, text = self.get_voice_and_text(message)
 
             # Set the audio path.
             mp3_path = AUDIO_DIRECTORY / f"{message.id}.mp3"
 
             # Build the footer text
-            footer_parts = [f"- {voice.name}", f"(by @{message.author.name})"]
+            # 🗨️ plomdawg 🔁 plomdawg 💰 $0 ⌚ 7.75 seconds
+            footer_parts = [f"🗨️ {message.author.name}"]
 
             # Add replay info if applicable
             if user != message.author or mp3_path.exists():
-                footer_parts.append(f"(🔄 by @{user.name})")
+                footer_parts.append(f"🔁 {user.name}")
 
             # Add cost info
-            cost_text = "cost: "
+            cost_text = "💰 "
             if mp3_path.exists():
-                cost_text += "$0 (cached!)"
+                cost_text += "$0"
             else:
                 cost_text += f"{voice.calculate_cost(text)}"
             footer_parts.append(cost_text)
@@ -120,14 +187,18 @@ class TTS(commands.Cog):
             # Combine the footer parts.
             footer = " ".join(footer_parts)
 
+            # Use a loading gif for the footer icon
+            footer_icon = "https://media.tenor.com/-n8JvVIqBXkAAAAM/dddd.gif"
+
             # Send initial response
             response = await self.bot.messaging.send_embed(
                 channel=message.channel,
+                title=f"{voice.name} 🗣️",
                 text=quoted_text(text),
                 color=discord.Color.light_gray(),
                 thumbnail=voice.avatar,
                 footer=footer,
-                footer_icon=message.author.display_avatar.url,
+                footer_icon=footer_icon,
             )
 
             # Add replay button
@@ -144,15 +215,13 @@ class TTS(commands.Cog):
 
             duration = time.time() - start_time
             self.log(f"Generated in {duration:.2f} seconds")
-            footer += f" (in {duration:.2f} seconds)"
+            footer += f" ⌚ {duration:.2f} seconds"
             try:
                 # Update embed to show processing
                 await self.bot.messaging.edit_embed(
                     message=response,
                     color=discord.Color.blue(),
-                    thumbnail=voice.avatar,
                     footer=footer,
-                    footer_icon=message.author.display_avatar.url,
                 )
 
                 # Play the audio

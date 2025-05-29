@@ -61,18 +61,20 @@ class ElevenLabsGenerator(TTSGenerator):
         return f"${cost}"
 
 
-def get_voices(api_key: str) -> List[Voice]:
+def get_elevenlabs_voices(api_key: str) -> List[Voice]:
     """Get the voices from ElevenLabs."""
     voices: List[Voice] = []
     client = ElevenLabs(api_key=api_key)
     response = client.voices.get_all()
     for voice in response.voices:
+        if not voice.name:
+            continue
         name = NAMES.get(voice.name, voice.name)
         category = f"ElevenLabs {voice.category}"
         voices.append(
             Voice(
                 name=name,
-                description=voice.description,
+                description=voice.description or "",
                 category=category,
                 avatar=AVATARS.get(name, ""),
                 generator=ElevenLabsGenerator(client, voice.voice_id),

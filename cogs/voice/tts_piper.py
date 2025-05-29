@@ -123,7 +123,7 @@ def download_file(url: str, path: pathlib.Path) -> bool:
         return False
 
 
-def get_voices() -> List[Voice]:
+def get_piper_voices() -> List[Voice]:
     """Get the available Piper voices."""
     voices: List[Voice] = []
 
