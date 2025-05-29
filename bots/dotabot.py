@@ -3,7 +3,6 @@ This file is the main entry point for the Dota 2 bot.
 """
 
 import asyncio
-import discord
 
 from bot import DiscordBot
 from cogs.dota.dota_wiki import DotaWiki
@@ -23,10 +22,8 @@ class DotaBot(DiscordBot):
         await super().start(token=self.secrets.get("DOTABOT_DISCORD_SECRET_TOKEN"))
 
     async def on_ready(self):
+        await self.set_activity(f"DotA 2 in {len(self.guilds)} servers! 🎮")
         await super().on_ready()
-
-        # Change discord status to "Playing DotA 2 in __ servers"
-        await self.set_activity(f"DotA 2 in {len(self.guilds)} servers")
 
 
 async def main():

@@ -18,10 +18,8 @@ class VoiceBot(DiscordBot):
         await super().start(token=self.secrets.get("VOICEBOT_DISCORD_SECRET_TOKEN"))
 
     async def on_ready(self):
+        await self.set_activity(f"Playing in {len(self.guilds)} servers! 🎤")
         await super().on_ready()
-
-        # Change presence to "Playing AI voices | ;help"
-        await self.set_activity(f"Playing AI voices | {self.prefix}help")
 
 
 async def main():

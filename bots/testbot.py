@@ -36,12 +36,8 @@ class TestBot(DiscordBot):
         await super().setup_hook()
 
     async def on_ready(self):
+        await self.set_activity(f"Watching {len(self.guilds)} servers! 😀")
         await super().on_ready()
-
-        self.log("Registering test command")
-
-        # Change discord status to "Watching __ servers"
-        await self.set_activity(f"Watching {len(self.guilds)} servers")
 
         # Test the gemini cog.
         self.gemini.generate_image(
