@@ -2,18 +2,19 @@
 This cog provides Gemini AI API functionality.
 """
 
+import glob
+import math
+import os
 import pathlib
 from io import BytesIO
 from typing import TYPE_CHECKING, Optional
-import os
-import glob
-import math
 
 import discord
+import requests
 from discord.ext import commands
 from google import genai
+from google.genai import types
 from PIL import Image
-import requests
 
 from cogs.common.messaging import code_block
 
@@ -40,7 +41,7 @@ class Gemini(commands.Cog):
             response = self.client.models.generate_content(
                 model="gemini-2.0-flash-preview-image-generation",
                 contents=contents,
-                config=genai.types.GenerateContentConfig(
+                config=types.GenerateContentConfig(
                     response_modalities=["TEXT", "IMAGE"]
                 ),
             )
@@ -138,7 +139,7 @@ class Gemini(commands.Cog):
     async def chad(self, interaction: discord.Interaction, user: discord.Member):
         """Generate a chad image using Gemini API."""
         image_bytes = requests.get(user.display_avatar.url).content
-        image = genai.types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
+        image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
 
         # Create a prompt that incorporates the avatar and asks for a chad style image
         prompt = "Generate a image in the same artstyle of this avatar as a gigachad. Personify the avatar with a more muscular body. Use details from the avatar to make the body match the avatar. The outfit and accessories should be similar to the avatar, but designed to show off the muscles. IMPORTANT: Maintain the exact same gender as shown in the avatar - if the avatar appears feminine, keep it feminine; if masculine, keep it masculine. Do not alter or change the gender presentation of the face in any way."
@@ -158,7 +159,7 @@ class Gemini(commands.Cog):
     async def troll(self, interaction: discord.Interaction, user: discord.Member):
         """Generate a troll image using Gemini API."""
         image_bytes = requests.get(user.display_avatar.url).content
-        image = genai.types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
+        image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
 
         await self.handle_image_generation(
             interaction=interaction,
@@ -178,7 +179,7 @@ class Gemini(commands.Cog):
     ):
         """Generate a remix of a discord user's avatar using Gemini API."""
         image_bytes = requests.get(user.display_avatar.url).content
-        image = genai.types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
+        image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
 
         await self.handle_image_generation(
             interaction=interaction,

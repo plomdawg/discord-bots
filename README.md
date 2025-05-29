@@ -45,3 +45,22 @@ discord-bots/
    ```bash
    docker compose up
    ```
+
+## Development Setup
+
+Use python3.11
+
+1. Install development dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Set up pre-commit hooks for code quality:
+   ```bash
+   pre-commit install
+   ```
+
+The pre-commit hooks will automatically:
+- Sort Python imports using isort
+- Validate YAML formatting
+- Run on every commit

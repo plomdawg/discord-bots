@@ -26,3 +26,8 @@ pillow
 # Lyrics Genius API
 lyricsgenius
 
+# Development tools
+pre-commit
+isort
+yamllint
+

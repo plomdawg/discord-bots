@@ -1,9 +1,10 @@
 """Data models and common functionality."""
 
-from typing import Optional, Any, cast
 import json
 import pathlib
 from dataclasses import dataclass
+from typing import Any, Optional, cast
+
 from pony import orm
 
 # Configure the pony database

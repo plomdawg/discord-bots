@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import discord
 import lyricsgenius
-from lyricsgenius.types.song import Song
 from discord.ext import commands
+from lyricsgenius.types.song import Song
 
 from cogs.common.messaging import bold
 

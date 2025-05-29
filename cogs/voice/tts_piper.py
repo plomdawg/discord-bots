@@ -87,16 +87,8 @@ class PiperGenerator(TTSGenerator):
         return path
 
     def calculate_cost(self, text: str) -> str:
-        """Calculate the cost of generating this TTS message.
-        Since Piper is local, there is no cost.
-
-        Args:
-            text: The text to calculate cost for
-
-        Returns:
-            str: Formatted cost string
-        """
-        return "$0 (local generation)"
+        """Calculate the cost of generating this TTS message."""
+        return "$0"  # local TTS generation
 
 
 def download_file(url: str, path: pathlib.Path) -> bool:

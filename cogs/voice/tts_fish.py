@@ -14,7 +14,7 @@ class FishSpeechGenerator(TTSGenerator):
     """Fish-Speech implementation of the TTS generator."""
 
     def __init__(self, model_dir: pathlib.Path):
-
+        """Initialize the FishSpeechGenerator."""
         self.name = model_dir.name
         self.reference_audio_mp3 = model_dir / f"{self.name}.mp3"
         self.backing_audio_mp3 = model_dir / f"backing.mp3"
@@ -39,6 +39,7 @@ class FishSpeechGenerator(TTSGenerator):
                 )
 
     def save_audio(self, text: str, path: pathlib.Path):
+        """Save the audio to a path."""
         # Ensure we have a WAV file for the Fish Speech API
         self._ensure_wav_reference()
 
@@ -115,6 +116,7 @@ class FishSpeechGenerator(TTSGenerator):
 
 
 def get_fish_voices() -> List[Voice]:
+    """Get the voices from Fish Speech."""
     model_dir = pathlib.Path("models")
     voices: List[Voice] = []
     for model_dir in model_dir.iterdir():

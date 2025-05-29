@@ -3,11 +3,10 @@ This file is the main entry point for the Dota 2 bot.
 """
 
 import asyncio
+import typing
 
 from bot import DiscordBot
 from cogs.dota.dota_wiki import DotaWiki
-
-import typing
 
 
 class DotaBot(DiscordBot):
