@@ -7,6 +7,7 @@ import typing
 
 from bot import DiscordBot
 from cogs.dota.dota_wiki import DotaWiki
+from cogs.dota.emojis import Emojis
 
 
 class DotaBot(DiscordBot):
@@ -15,8 +16,10 @@ class DotaBot(DiscordBot):
 
     async def start(self):
         # Load the cogs used by the Dota bot.
-        cog = await self.load_cog("dota.dota_wiki", "DotaWiki")
-        self.dota_wiki = typing.cast(DotaWiki, cog)
+        await self.load_cog("dota.dota_wiki", "DotaWiki")
+        await self.load_cog("dota.emojis", "Emojis")
+        self.icons = typing.cast(Emojis, await self.load_cog("dota.emojis", "Emojis"))
+        await self.load_cog("dota.quiz", "ShopkeeperQuiz")
 
         await super().start(token=self.secrets.get("DOTABOT_DISCORD_SECRET_TOKEN"))
 

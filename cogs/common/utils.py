@@ -7,6 +7,9 @@ from discord.ext import commands
 if TYPE_CHECKING:
     from bot import DiscordBot
 
+PLOMBOT_DEV_GUILD = discord.Object(id=575720006697091106)
+MY_DUDES_GUILD = discord.Object(id=408172061723459584)
+
 
 def ignore_self(func: Callable) -> Callable:
     """Decorator to ignore events from the bot itself.

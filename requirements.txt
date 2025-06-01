@@ -20,8 +20,13 @@ elevenlabs
 # Gemini API
 google-genai
 
+
 # PIL
 pillow
+
+# Dota 2 database
+dotabase
+sqlalchemy_utils
 
 # Lyrics Genius API
 lyricsgenius
