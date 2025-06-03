@@ -19,6 +19,7 @@ class DotaBot(DiscordBot):
         await self.load_cog("dota.dota_wiki", "DotaWiki")
         self.icons = typing.cast(Emojis, await self.load_cog("dota.emojis", "Emojis"))
         await self.load_cog("dota.quiz", "ShopkeeperQuiz")
+        await self.load_cog("dota.opendota", "OpenDota")
 
         await super().start(token=self.secrets.get("DOTABOT_DISCORD_SECRET_TOKEN"))
 
