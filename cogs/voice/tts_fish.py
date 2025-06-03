@@ -7,7 +7,7 @@ from pydub import AudioSegment
 
 from cogs.voice.tts_types import TTSGenerator, Voice
 
-API_ENDPOINT = "http://192.168.8.174:7860"
+API_ENDPOINT = "http://192.168.8.175:7860"
 
 
 class FishSpeechGenerator(TTSGenerator):
