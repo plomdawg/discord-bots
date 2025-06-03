@@ -17,7 +17,6 @@ class DotaBot(DiscordBot):
     async def start(self):
         # Load the cogs used by the Dota bot.
         await self.load_cog("dota.dota_wiki", "DotaWiki")
-        await self.load_cog("dota.emojis", "Emojis")
         self.icons = typing.cast(Emojis, await self.load_cog("dota.emojis", "Emojis"))
         await self.load_cog("dota.quiz", "ShopkeeperQuiz")
 
