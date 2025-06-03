@@ -35,13 +35,19 @@ class Gemini(commands.Cog):
         """Log a message to the bot."""
         self.bot.log(f"[Gemini] {message}")
 
-    def generate_image(self, contents: list, path: pathlib.Path):
+    def generate_image(
+        self, prompt: str, path: pathlib.Path, image: Optional[types.Part] = None
+    ):
         """Generate an image using Gemini API to a path."""
         try:
             self.log(f"Generating image to {path}")
+            parts = [types.Part(text=prompt)]
+            if image is not None:
+                parts.append(image)
+
             response = self.client.models.generate_content(
                 model="gemini-2.0-flash-preview-image-generation",
-                contents=contents,
+                contents=[types.Content(parts=parts)],
                 config=types.GenerateContentConfig(
                     response_modalities=["TEXT", "IMAGE"]
                 ),
@@ -121,12 +127,6 @@ class Gemini(commands.Cog):
         display_text: Optional[str] = None,
     ):
         """Handle the image generation process."""
-        # Create the content structure
-        if image:
-            contents = [types.Content(parts=[types.Part(text=prompt), image])]
-        else:
-            contents = [types.Content(parts=[types.Part(text=prompt)])]
-
         # Reply to the interaction.
         text = (
             display_text or f"Generating image using Gemini AI: \n{code_block(prompt)}"
@@ -143,7 +143,7 @@ class Gemini(commands.Cog):
         try:
             self.log(f"Generating image for {interaction.user.display_name}:")
             self.log(f"  -> {prompt}")
-            self.generate_image(contents=contents, path=image_path)
+            self.generate_image(image=image, prompt=prompt, path=image_path)
             self.log(f"Image saved successfully to {image_path}")
         except Exception as e:
             self.log(f"{e.__class__.__name__}: {e.__str__()}")
