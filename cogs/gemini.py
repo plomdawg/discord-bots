@@ -38,6 +38,7 @@ class Gemini(commands.Cog):
     def generate_image(self, contents: list, path: pathlib.Path):
         """Generate an image using Gemini API to a path."""
         try:
+            self.log(f"Generating image to {path}")
             response = self.client.models.generate_content(
                 model="gemini-2.0-flash-preview-image-generation",
                 contents=contents,
@@ -57,11 +58,31 @@ class Gemini(commands.Cog):
                 self.log("Error: No parts in content")
                 raise ValueError("No parts in content")
 
+            if response.candidates[0].content.parts[0].text:
+                self.log(f"Text: {response.candidates[0].content.parts[0].text}")
+
             for part in response.candidates[0].content.parts:
-                if part.inline_data is not None and part.inline_data.data is not None:
-                    image = Image.open(BytesIO(part.inline_data.data))
-                    image.save(path)
-                    return
+                if (
+                    hasattr(part, "inline_data")
+                    and part.inline_data
+                    and part.inline_data.data
+                ):
+                    # The data should be base64 encoded
+                    import base64
+
+                    try:
+                        # Try to decode base64 data
+                        image_data = base64.b64decode(part.inline_data.data)
+                        # Save the decoded data
+                        with open(path, "wb") as f:
+                            f.write(image_data)
+                        return
+                    except Exception as e:
+                        self.log(f"Error decoding image data: {e}")
+                        # If base64 decoding fails, try saving raw data
+                        with open(path, "wb") as f:
+                            f.write(part.inline_data.data)
+                        return
 
             self.log("Error: No image data found in response parts")
             raise ValueError("No image data found in response parts")
@@ -100,8 +121,11 @@ class Gemini(commands.Cog):
         display_text: Optional[str] = None,
     ):
         """Handle the image generation process."""
-        # Add the image to the contents if it is provided.
-        contents = [prompt, image] if image else [prompt]
+        # Create the content structure
+        if image:
+            contents = [types.Content(parts=[types.Part(text=prompt), image])]
+        else:
+            contents = [types.Content(parts=[types.Part(text=prompt)])]
 
         # Reply to the interaction.
         text = (
@@ -138,6 +162,9 @@ class Gemini(commands.Cog):
     @discord.app_commands.describe(user="The user to generate a chad image of.")
     async def chad(self, interaction: discord.Interaction, user: discord.Member):
         """Generate a chad image using Gemini API."""
+        self.log(
+            f"Generating chad image of {user.display_name}: {user.display_avatar.url}"
+        )
         image_bytes = requests.get(user.display_avatar.url).content
         image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
 
