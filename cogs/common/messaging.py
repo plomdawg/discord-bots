@@ -111,10 +111,14 @@ class Messaging(commands.Cog):
                 embed.set_footer(text=footer)
         return embed
 
-    async def _send_embed(self, channel, embed: discord.Embed) -> discord.Message:
+    async def _send_embed(
+        self, channel, embed: discord.Embed, ephemeral: bool = False
+    ) -> discord.Message:
         """Sends a single embed message to the channel."""
         if type(channel) == discord.interactions.Interaction:
-            response = await channel.response.send_message(embed=embed)
+            response = await channel.response.send_message(
+                embed=embed, ephemeral=ephemeral
+            )
             assert isinstance(response.resource, discord.Message)
             return response.resource
         return await channel.send(embed=embed)
@@ -158,6 +162,7 @@ class Messaging(commands.Cog):
         text=None,
         title=None,
         thumbnail=None,
+        ephemeral=False,
     ):
         """Sends a message to a channel, and returns the discord.Message of the sent message.
 
@@ -180,7 +185,7 @@ class Messaging(commands.Cog):
             )
             if text is not None:
                 embed.description = text
-            return await self._send_embed(channel, embed)
+            return await self._send_embed(channel, embed, ephemeral)
 
         # Handle long text by splitting into chunks
         chunks = self._split_text_into_chunks(text)
@@ -205,7 +210,7 @@ class Messaging(commands.Cog):
                 else:
                     embed.set_footer(text=footer)
 
-            last_response = await self._send_embed(channel, embed)
+            last_response = await self._send_embed(channel, embed, ephemeral)
 
         return last_response
 
