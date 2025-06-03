@@ -9,10 +9,10 @@ import typing
 import discord
 
 from bot import DiscordBot
+from cogs.common import utils
 from cogs.gemini import Gemini
 from cogs.test import Test
 
-MY_DUDES = discord.Object(id=408172061723459584)
 TEST_CHANNEL = discord.Object(id=408481491597787136)
 
 
@@ -31,7 +31,7 @@ class TestBot(DiscordBot):
     async def setup_hook(self):
         # Sync the commands to the guild.
         self.log("Syncing commands to my dudes guild")
-        await self.tree.sync(guild=MY_DUDES)
+        await self.tree.sync(guild=utils.MY_DUDES_GUILD)
         self.log("Done syncing commands to my dudes guild")
         await super().setup_hook()
 
