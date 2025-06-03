@@ -16,7 +16,7 @@ class MusicBot(DiscordBot):
         await super().start(self.secrets.get("MUSICBOT_DISCORD_SECRET_TOKEN"))
 
     async def on_ready(self):
-        await self.set_activity(f"Playing music in {len(self.guilds)} servers! 🎵")
+        await self.set_activity(f"Playing in {len(self.guilds)} servers 🎧")
         await super().on_ready()
 
 
