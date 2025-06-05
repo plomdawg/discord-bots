@@ -118,9 +118,21 @@ class Quiz:
         if category:
             description += f"\n**Category:** {self.current_word.category} "
             embed.set_footer(text="*Here's a hint!*")
-            # For innates and facets, show the image early since it's not a spoiler.
-            # if self.current_word.category in ["Innate Abilities", "Facet Abilities"]:
-            #    embed.set_thumbnail(url=self.current_word.image)
+            # Show an image of the category type.
+            if self.current_word.category == "Innate Abilities":
+                embed.set_thumbnail(
+                    url=utils.dotabase_url(
+                        "panorama/images/hud/facets/innate_icon_large_png.png"
+                    )
+                )
+            elif self.current_word.category == "Facet Abilities":
+                embed.set_thumbnail(
+                    url=utils.dotabase_url(
+                        "/panorama/images/spellicons/attribute_bonus_png.png"
+                    )
+                )
+            elif self.current_word.category == "Items":
+                embed.set_thumbnail(url=SHOPKEEPER_IMAGE)
 
         # Add the hint.
         if hint:
@@ -317,8 +329,6 @@ class ShopkeeperQuiz(commands.Cog):
     async def on_ready(self):
         """Load the words when the bot is ready."""
         self.load_words()
-        for word in self.words:
-            self.log(f"[{word.category}] {word.text}: {word.get_hint()}: {word.url}")
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
@@ -354,11 +364,14 @@ class ShopkeeperQuiz(commands.Cog):
         self.words = []
 
         # Add the heroes and abilities.
-        for hero in utils.get_heroes():
+        heroes = utils.get_heroes()
+        hero_words = []
+        abilities = []
+        for hero in heroes:
             emoji = self.bot.icons.get(hero.localized_name)
 
             # Heroes do not have a hint.
-            self.words.append(
+            hero_words.append(
                 Word(
                     text=hero.localized_name,
                     category="Heroes",
@@ -367,35 +380,52 @@ class ShopkeeperQuiz(commands.Cog):
                     emoji=emoji,
                 )
             )
-            for ability in hero.abilities:
-                category = "Abilities"
-                if ability.facet:
-                    category = "Facet Abilities"
-                if ability.innate:
-                    category = "Innate Abilities"
+            abilities.extend(hero.abilities)
+        self.log(f"Loaded {len(hero_words)} words from {len(heroes)} heroes.")
 
-                # Skip abilities with underscores like silencer_irrepressible.
-                if "_" in ability.localized_name:
-                    continue
+        # Add the abilities.
+        ability_words = []
+        for ability in abilities:
+            category = "Abilities"
+            if ability.facet_id:
+                category = "Facet Abilities"
+            if ability.innate:
+                category = "Innate Abilities"
 
-                # Use the lore as the hint if it exists, otherwise use the hero name.
-                hint = ability.lore or ability.hero.localized_name
+            # Skip abilities with underscores like silencer_irrepressible.
+            if "_" in ability.localized_name:
+                continue
 
-                self.words.append(
-                    Word(
-                        text=ability.localized_name,
-                        category=category,
-                        hint=hint,
-                        image=utils.dotabase_url(ability.icon),
-                        url=utils.dota_wiki_url(ability.localized_name),
-                        emoji=emoji,
-                    )
+            # Skip abilities with no text in their name.
+            if ability.localized_name.strip() == "":
+                continue
+
+            # Use the lore as the hint if it exists, otherwise use the hero name.
+            hint = ability.lore or ability.hero.localized_name
+
+            ability_words.append(
+                Word(
+                    text=ability.localized_name,
+                    category=category,
+                    hint=hint,
+                    image=utils.dotabase_url(ability.icon),
+                    url=utils.dota_wiki_url(ability.localized_name),
+                    emoji=emoji,
                 )
+            )
+        self.log(f"Loaded {len(ability_words)} words from {len(abilities)} abilities.")
 
-        # Add the facet names.
-        for facet in utils.get_facets():
+        # Add the facets.
+        facet_words = []
+        facets = utils.get_facets()
+        for facet in facets:
             emoji = self.bot.icons.get(facet.hero.localized_name)
-            self.words.append(
+
+            # Skip facets with no text in their name.
+            if facet.localized_name.strip() == "":
+                continue
+
+            facet_words.append(
                 Word(
                     text=facet.localized_name,
                     category="Facets",
@@ -405,11 +435,18 @@ class ShopkeeperQuiz(commands.Cog):
                     emoji=emoji,
                 )
             )
+        self.log(f"Loaded {len(facet_words)} words from {len(facets)} facets.")
 
         # Add the items.
-        for item in utils.get_items():
+        item_words = []
+        items = utils.get_items()
+        for item in items:
+            # Skip items with no text in their name.
+            if item.localized_name.strip() == "":
+                continue
+
             # Use the lore as the hint.
-            self.words.append(
+            item_words.append(
                 Word(
                     text=item.localized_name,
                     category="Items",
@@ -418,6 +455,13 @@ class ShopkeeperQuiz(commands.Cog):
                     url=utils.dota_wiki_url(item.localized_name),
                 )
             )
+        self.log(f"Loaded {len(item_words)} words from {len(items)} items.")
+
+        # Add the words to the list.
+        self.words.extend(facet_words)
+        self.words.extend(hero_words)
+        self.words.extend(ability_words)
+        self.words.extend(item_words)
 
         print(f"Loaded {len(self.words)} quiz words.")
 
