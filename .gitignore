@@ -1,15 +1,18 @@
 # Python cache files
 __pycache__/
 
-# VS Code
+# IDE settings
+.cursor/
 .vscode/
 
 # Generated files
 audio/
 images/
+assets/
+static/
 
 # Local AI voice models
 models/
 
 # Database
-cogs/common/database.sqlite
+*.sqlite
