@@ -99,3 +99,8 @@ class Audio(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Audio(bot))
+
+
+async def teardown(bot):
+    for vc in bot.voice_clients:
+        await vc.disconnect(force=True)
