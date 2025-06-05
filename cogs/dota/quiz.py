@@ -396,10 +396,6 @@ class ShopkeeperQuiz(commands.Cog):
             if "_" in ability.localized_name:
                 continue
 
-            # Skip abilities with no text in their name.
-            if ability.localized_name.strip() == "":
-                continue
-
             # Use the lore as the hint if it exists, otherwise use the hero name.
             hint = ability.lore or ability.hero.localized_name
 
@@ -441,10 +437,6 @@ class ShopkeeperQuiz(commands.Cog):
         item_words = []
         items = utils.get_items()
         for item in items:
-            # Skip items with no text in their name.
-            if item.localized_name.strip() == "":
-                continue
-
             # Use the lore as the hint.
             item_words.append(
                 Word(
