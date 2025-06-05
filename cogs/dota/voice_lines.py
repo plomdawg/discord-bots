@@ -1,9 +1,10 @@
 import random
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from discord.ext import commands
 
 from cogs.audio.types import AudioTrack
+from cogs.common.messaging import quoted_text
 from cogs.dota import utils
 
 if TYPE_CHECKING:
@@ -23,11 +24,26 @@ def get_index_from_query(text):
     return text, index
 
 
-def get_response_url(response):
-    """Get the URL for a response."""
-    if response.hero:
-        return utils.dota_wiki_url(f"{response.hero.localized_name}/Responses")
-    return utils.dotabase_url(response.mp3)
+def get_response_text(response):
+    """Get the text for a response.
+    Examples:
+
+    Monkey King (Bill Millsap)
+    > That's the biggest banana slug I've ever seen!
+    """
+    voice = utils.get_voice(response.voice_id)
+
+    url = utils.dota_wiki_url(voice.url)
+    text = f"**[{voice.name}]({url})**"
+
+    # Add voice actor info
+    if voice.voice_actor is not None:
+        url = utils.fandom_url(str(voice.voice_actor))
+        text += f" **([{voice.voice_actor}]({url}))**"
+
+    text += " 🗣️\n\n"
+    text += quoted_text(response.text)
+    return text
 
 
 class VoiceLines(commands.Cog):
@@ -41,13 +57,12 @@ class VoiceLines(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        self.log(f"on_message: {message.content}")
         # Ignore bot messages.
         if message.author.bot:
             return
 
         # Ignore messages if the author is not in a voice channel.
-        if not await self.bot.utils.author_has_voice(message, "play a dota voice line"):
+        if not await self.bot.utils.author_has_voice(message, ""):
             return
 
         # Check if the message ends in a number.
@@ -70,7 +85,6 @@ class VoiceLines(commands.Cog):
 
         # Check if the message starts with "dota" (e.g. "dota haha")
         if text.lower().startswith("dota ") or text.lower().startswith("any "):
-            self.log(f"dota: {text}")
             text = text.split(" ", 1)[1]
             responses, index = self.get_voice_responses(text=text, index=index)
             if responses:
@@ -79,7 +93,6 @@ class VoiceLines(commands.Cog):
                 )
 
         elif text.lower().startswith("hero "):
-            self.log(f"hero: {text}")
             hero_name = text.split(" ", 1)[1]
             responses, index = self.get_voice_responses(name=hero_name, index=index)
             if responses:
@@ -150,24 +163,26 @@ class VoiceLines(commands.Cog):
 
             return await self.bot.messaging.send_embed(channel=text_channel, text=msg)
 
-        voice_channel = message.author.voice.channel if message.author.voice else None
-        if not voice_channel:
-            await self.bot.messaging.send_embed(
-                channel=text_channel,
-                text="You must be in a voice channel to play a voice line.",
-            )
+        # Ensure the author is in a voice channel.
+        if not await self.bot.utils.author_has_voice(message, "play a voice line"):
             return
+
         response = responses[index]
-        name = response.hero.localized_name if response.hero else "Unknown"
-        url = get_response_url(response)
-        text = f"[{response.text} ({name})]({url})"
-        footer = f"voice line {index+1} out of {len(responses)}"
-        thumbnail = getattr(response, "icon", None) or None
+
+        self.log(
+            f"Playing voice line for {message.author.name} in {message.guild.name}"
+        )
 
         await self.bot.messaging.send_embed(
-            channel=text_channel, text=text, thumbnail=thumbnail, footer=footer
+            channel=text_channel,
+            text=get_response_text(response),
+            thumbnail=utils.dotabase_url(response.voice.image),
+            footer=f"playing #{index+1} out of {len(responses)} responses",
+            footer_icon=utils.dotabase_url("/panorama//images/icon_announcer_psd.png"),
         )
-        await self.play_response(voice_channel, utils.dotabase_url(response.mp3))
+        await self.play_response(
+            message.author.voice.channel, utils.dotabase_url(response.mp3)
+        )
 
     async def play_response(self, channel, url):
         # Use the audio cog to play the voice line

@@ -4,7 +4,7 @@ import pathlib
 from typing import List, Optional, Tuple
 
 import discord
-from dotabase import Ability, Facet, Hero, Item, Response, dotabase_session
+from dotabase import Ability, Facet, Hero, Item, Response, Voice, dotabase_session
 
 db = dotabase_session()
 """
@@ -24,6 +24,16 @@ def dota_wiki_url(hero_name) -> str:
     """
     path = hero_name.replace(" ", "_").replace("'", "%27")
     return f"https://liquipedia.net/dota2/{path}"
+
+
+def fandom_url(voice_actor: str) -> str:
+    """Convert a voice actor name to a Fandom wiki URL.
+
+    Example:
+        fandom_url("Bill Millsap") --> https://dubbing.fandom.com/wiki/Bill_Millsap
+    """
+    path = voice_actor.replace(" ", "_")
+    return f"https://dubbing.fandom.com/wiki/{path}"
 
 
 def dotabase_url(path) -> str:
@@ -196,6 +206,11 @@ def find_voice_responses_exact(text: str) -> List[Response]:
     return db.query(Response).filter(Response.text.ilike(text)).all()
 
 
+def get_voice(voice_id: int) -> Voice:
+    """Get a voice by ID."""
+    return db.query(Voice).filter(Voice.id == voice_id).first()
+
+
 if __name__ == "__main__":
     ability = db.query(Ability).filter(Ability.localized_name == "Arcane Bolt").first()
     print(f"ability.facet_id: {ability.facet_id}")
@@ -213,3 +228,43 @@ if __name__ == "__main__":
         for ability in hero.abilities:
             if "_" in ability.localized_name:
                 print(f"{ability.localized_name} - {ability.facet_id}")
+
+    response = find_voice_responses_by_text("you people")[0]
+    print(response)
+    voice = get_voice(response.voice_id)
+    print(voice)  # <dotabase.dotabase.Voice object at 0x7fa2fd294c10>
+    print(voice.name)  # Announcer: Cave Johnson
+    print(
+        dotabase_url(voice.icon)
+    )  # https://dotabase.dillerm.io/vpk/panorama/images/icon_announcer_psd.png
+    print(
+        dotabase_url(voice.image)
+    )  # https://dotabase.dillerm.io/vpk/panorama/images/econ/announcer/cave_johnson_ti11_png.png
+    print(
+        dota_wiki_url(voice.url)
+    )  # https://liquipedia.net/dota2/Cave_Johnson_Announcer_Pack
+    print(voice.media_name)  # announcer_dlc_cavej
+    print(voice.voice_actor)  # None
+    print(voice.hero_id)  # None
+    print(voice.criteria)  # None
+
+    voice = find_voice_responses_by_text("biggest banana slug")[0].voice
+    print(voice)
+    print(voice.name)  # Monkey King
+    print(
+        dotabase_url(voice.icon)
+    )  # https://dotabase.dillerm.io/vpk/panorama/images/heroes/icons/npc_dota_hero_monkey_king_png.png
+    print(
+        dotabase_url(voice.image)
+    )  # https://dotabase.dillerm.io/vpk/panorama/images/heroes/selection/npc_dota_hero_monkey_king_png.png
+    print(1111)
+    print(
+        dota_wiki_url(voice.url)
+    )  # https://liquipedia.net/dota2/Monkey_King/Responses
+    print(voice.media_name)  # monkey_king
+    print(voice.voice_actor)  # Bill Millsap
+    print(voice.hero_id)  # 114
+    print(voice.criteria)  # None
+    print(fandom_url(voice.voice_actor))  # https://dubbing.fandom.com/wiki/Bill_Millsap
+
+    print(dotabase_url("/panorama/images/icon_announcer_psd.png"))
