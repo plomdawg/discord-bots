@@ -4,7 +4,7 @@ import pathlib
 from typing import List, Optional, Tuple
 
 import discord
-from dotabase import Ability, Facet, Hero, Item, dotabase_session
+from dotabase import Ability, Facet, Hero, Item, Response, dotabase_session
 
 db = dotabase_session()
 """
@@ -171,6 +171,29 @@ async def upload_icons_to_servers(
                 server_slots[server_id] = available_slots
 
     return successful, len(icons)
+
+
+def get_all_voice_responses() -> List[Response]:
+    """Return all voice responses from dotabase."""
+    return db.query(Response).all()
+
+
+def find_voice_responses_by_text(text: str) -> List[Response]:
+    """Return all voice responses containing the given text (case-insensitive)."""
+    return db.query(Response).filter(Response.text.ilike(f"%{text}%")).all()
+
+
+def find_voice_responses_by_hero(hero_name: str) -> List[Response]:
+    """Return all voice responses for a given hero name (case-insensitive)."""
+    hero = db.query(Hero).filter(Hero.localized_name.ilike(hero_name)).first()
+    if not hero:
+        return []
+    return db.query(Response).filter(Response.hero_id == hero.id).all()
+
+
+def find_voice_responses_exact(text: str) -> List[Response]:
+    """Return all voice responses that exactly match the given text (case-insensitive)."""
+    return db.query(Response).filter(Response.text.ilike(text)).all()
 
 
 if __name__ == "__main__":
