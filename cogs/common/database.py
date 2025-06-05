@@ -34,9 +34,9 @@ class Database(commands.Cog):
     def _get_or_create_user(self, user_id: int) -> User:
         """Get a user or create it if it doesn't exist."""
         with self.db_session:
-            user = User.get(id=user_id)
+            user = User.get(id=str(user_id))
             if user is None:
-                user = User(id=user_id)
+                user = User(id=str(user_id))
             return user
 
     # Track operations
