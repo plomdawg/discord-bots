@@ -209,6 +209,9 @@ class Gemini(commands.Cog):
         self, interaction: discord.Interaction, user: discord.Member, prompt: str
     ):
         """Generate a remix of a discord user's avatar using Gemini API."""
+        self.log(
+            f"Generating remix image of {user.display_name}: {user.display_avatar.url} with prompt: {prompt}"
+        )
         image_bytes = requests.get(user.display_avatar.url).content
         image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
 
