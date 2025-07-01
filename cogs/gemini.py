@@ -96,6 +96,10 @@ class Gemini(commands.Cog):
         except Exception as e:
             self.log(f"{e.__class__.__name__}: {e.__str__()}")
             self.log(f"Error generating image: {str(e)}")
+
+            # Check for quota exceeded error
+            if "RESOURCE_EXHAUSTED" in str(e) and "429" in str(e):
+                raise ValueError("The daily quota has been exceeded :(")
             raise
 
     # Add the /image command
