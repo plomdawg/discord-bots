@@ -69,13 +69,12 @@ class Utils(commands.Cog):
         """Returns True if the user is connected to a voice channel.
         Sends the message if the user is not connected."""
         if not (message.author.voice and message.author.voice.channel):
-            thumbnail = "http://i.imgur.com/go67eLE.gif"
-            error = (
-                f"{message.author.mention} you must be in a voice channel to {reason}."
-            )
-            await self.bot.messaging.send_error(
-                message.channel, text=error, thumbnail=thumbnail
-            )
+            if reason != "":
+                thumbnail = "http://i.imgur.com/go67eLE.gif"
+                error = f"{message.author.mention} you must be in a voice channel to {reason}."
+                await self.bot.messaging.send_error(
+                    message.channel, text=error, thumbnail=thumbnail
+                )
             return False
         return True
 
