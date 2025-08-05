@@ -3,7 +3,7 @@ import enum
 import pathlib
 import random
 import typing
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import discord
 
@@ -40,6 +40,8 @@ class AudioTrack:
         self.youtube_url = kwargs.get("youtube_url")
         # Spotify URL for the track
         self.spotify_url = kwargs.get("spotify_url")
+        # Thumbnail URL for the track
+        self.thumbnail = kwargs.get("thumbnail")
 
     def audio_source(self, volume: float) -> discord.PCMVolumeTransformer:
         """Returns an appropriate audio source for this track."""
@@ -267,6 +269,7 @@ class AudioPlayer:
         # If we found an existing client but it's not connected, clean it up
         if self.voice_client and not self.voice_client.is_connected():
             try:
+                self.bot.log(f"Disconnecting voice client: {self.voice_client.channel}")
                 await self.voice_client.disconnect(force=True)
             except:
                 pass
@@ -279,7 +282,7 @@ class AudioPlayer:
                     f"Attempting to connect to voice channel: {voice_channel.name}"
                 )
                 self.voice_client = await voice_channel.connect(
-                    timeout=15.0, reconnect=True
+                    timeout=5, reconnect=False
                 )
 
                 # Verify connection was successful
@@ -318,6 +321,18 @@ class AudioPlayer:
                     self.bot.error(f"Failed to move to requested channel: {e}")
 
         return self.voice_client
+
+    async def resume(self) -> None:
+        """Resume playback."""
+        if self.voice_client and self.voice_client.is_paused():
+            self.voice_client.resume()
+            self.status = AudioPlayerStatus.PLAYING
+
+    async def pause(self) -> None:
+        """Pause playback."""
+        if self.voice_client and self.voice_client.is_playing():
+            self.voice_client.pause()
+            self.status = AudioPlayerStatus.PAUSED
 
     async def play(self, channel: discord.VoiceChannel) -> None:
         """Starts playback in the given voice channel."""
@@ -395,9 +410,25 @@ class AudioPlayer:
 
         return self.volume
 
+    async def skip(self, count: int = 1) -> List[AudioTrack]:
+        """Skip a number of tracks."""
+        skipped_tracks = []
+        if self.voice_client and (
+            self.voice_client.is_playing() or self.voice_client.is_paused()
+        ):
+            for _ in range(count):
+                if self.queue.current_track:
+                    skipped_tracks.append(self.queue.current_track)
+                    self.queue.increment_position()
+                else:
+                    break
+            self.voice_client.stop()
+        return skipped_tracks
+
     async def stop(self) -> None:
         """Clear the queue and stop playback."""
         self.queue.clear()
         if self.voice_client:
+            self.bot.log(f"Disconnecting voice client: {self.voice_client.channel}")
             await self.voice_client.disconnect(force=True)
         self.status = AudioPlayerStatus.STOPPED
