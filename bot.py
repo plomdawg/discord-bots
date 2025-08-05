@@ -7,6 +7,7 @@ from datetime import datetime
 
 import colorama
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from cogs.audio.audio import Audio
@@ -73,7 +74,7 @@ class DiscordBot(commands.Bot):
             return
         self.log(f"Syncing {len(commands)} commands to all servers:")
         for command in commands:
-            assert isinstance(command, discord.app_commands.Command)
+            assert isinstance(command, app_commands.Command)
             self.log(f"   /{command.name} - {command.description}")
 
         await self.tree.sync()
