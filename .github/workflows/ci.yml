@@ -31,7 +31,11 @@ jobs:
         run: |
           make format-check
 
-      - name: Lint with pylint and mypy
-        run: |
-          make lint
-        continue-on-error: true # Don't fail build on lint warnings initially
+      - name: Lint Code Base
+        uses: super-linter/super-linter@v5
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_PYTHON_PYLINT: true
+          VALIDATE_PYTHON_MYPY: true
+          VALIDATE_PYTHON_BLACK: true
