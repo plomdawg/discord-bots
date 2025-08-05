@@ -6,6 +6,7 @@ import time
 from typing import TYPE_CHECKING, List, Optional
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from cogs.common.utils import MY_DUDES_GUILD
@@ -529,14 +530,12 @@ class ShopkeeperQuiz(commands.Cog):
         # Begin the quiz.
         asyncio.ensure_future(self.quizzes[channel.guild].start())
 
-    @discord.app_commands.command(name="quiz", description="Play the Shopkeeper's quiz")
+    @app_commands.command(name="quiz", description="Play the Shopkeeper's quiz")
     async def quiz(self, interaction: discord.Interaction):
         await self.bot.messaging.send_embed(interaction, text="Starting the quiz!")
         await self.shopkeeper_quiz(channel=interaction.channel, bot=self.bot)
 
-    @discord.app_commands.command(
-        name="top", description="List users with the most gold."
-    )
+    @app_commands.command(name="top", description="List users with the most gold.")
     async def top(self, interaction: discord.Interaction):
         """Sends a list of the users with the most gold"""
         # Get all users and their gold amounts
@@ -575,9 +574,7 @@ class ShopkeeperQuiz(commands.Cog):
             thumbnail="https://api.opendota.com/apps/dota2/images/abilities/alchemist_goblins_greed_md.png",
         )
 
-    @discord.app_commands.command(
-        name="gold", description="Check your current gold balance."
-    )
+    @app_commands.command(name="gold", description="Check your current gold balance.")
     async def gold(self, interaction: discord.Interaction):
         """Sends the user's current gold balance"""
         gold = self.bot.database.get_user_setting(interaction.user.id, "gold", 0)
