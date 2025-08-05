@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import discord
 import opendota2py
+from discord import app_commands
 from discord.ext import commands
 
 if TYPE_CHECKING:
@@ -25,11 +26,11 @@ class OpenDota(commands.Cog):
         """Log a message to the bot."""
         self.bot.log(f"[OpenDota] {message}")
 
-    @discord.app_commands.command(
+    @app_commands.command(
         name="opendota_id",
         description="Set your OpenDota ID.",
     )
-    @discord.app_commands.describe(
+    @app_commands.describe(
         opendota_id="Your OpenDota ID (e.g. 1234567890).",
     )
     async def opendota_id(self, interaction: discord.Interaction, opendota_id: str):

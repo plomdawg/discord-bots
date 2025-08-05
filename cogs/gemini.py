@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Optional
 
 import discord
 import requests
+from discord import app_commands
 from discord.ext import commands
 from google import genai
 from google.genai import types
@@ -103,21 +104,19 @@ class Gemini(commands.Cog):
             raise
 
     # Add the /image command
-    @discord.app_commands.command(
+    @app_commands.command(
         name="image", description="Generate an image using Gemini API."
     )
-    @discord.app_commands.describe(prompt="The prompt to generate an image from.")
+    @app_commands.describe(prompt="The prompt to generate an image from.")
     async def image(self, interaction: discord.Interaction, prompt: str):
         """Generate an image using Gemini API."""
         await self.handle_image_generation(interaction, prompt=prompt)
 
     # Add the /low-poly command
-    @discord.app_commands.command(
+    @app_commands.command(
         name="lowpoly", description="Generate a low-poly image using Gemini API."
     )
-    @discord.app_commands.describe(
-        prompt="The prompt to generate a low-poly image from."
-    )
+    @app_commands.describe(prompt="The prompt to generate a low-poly image from.")
     async def lowpoly(self, interaction: discord.Interaction, prompt: str):
         """Generate a low-poly image using Gemini API."""
         prompt = f"A simple low-poly digital illustration of {prompt} with a simple light colored background"
@@ -138,14 +137,18 @@ class Gemini(commands.Cog):
         await self.bot.messaging.send_embed(
             interaction,
             text=text,
-            footer_icon=interaction.user.display_avatar.url,
+            footer_icon=(
+                interaction.user.display_avatar.url if interaction.user else None
+            ),
         )
 
         # Generate the image path based on message id.
         image_path = IMAGE_DIRECTORY / f"{interaction.id}.png"
 
         try:
-            self.log(f"Generating image for {interaction.user.display_name}:")
+            self.log(
+                f"Generating image for {interaction.user.display_name if interaction.user else 'unknown user'}:",
+            )
             self.log(f"  -> {prompt}")
             self.generate_image(image=image, prompt=prompt, path=image_path)
             self.log(f"Image saved successfully to {image_path}")
@@ -160,10 +163,10 @@ class Gemini(commands.Cog):
         await self.bot.messaging.send_image(interaction.channel, image_path)
 
     # Add the /chad command
-    @discord.app_commands.command(
+    @app_commands.command(
         name="chad", description="Generate a chad image using Gemini API."
     )
-    @discord.app_commands.describe(user="The user to generate a chad image of.")
+    @app_commands.describe(user="The user to generate a chad image of.")
     async def chad(self, interaction: discord.Interaction, user: discord.Member):
         """Generate a chad image using Gemini API."""
         self.log(
@@ -183,10 +186,10 @@ class Gemini(commands.Cog):
         )
 
     # Add the /troll command
-    @discord.app_commands.command(
+    @app_commands.command(
         name="troll", description="Generate a troll image using Gemini API."
     )
-    @discord.app_commands.describe(user="The user to generate a troll image of.")
+    @app_commands.describe(user="The user to generate a troll image of.")
     async def troll(self, interaction: discord.Interaction, user: discord.Member):
         """Generate a troll image using Gemini API."""
         image_bytes = requests.get(user.display_avatar.url).content
@@ -200,11 +203,11 @@ class Gemini(commands.Cog):
         )
 
     # Add the /remix command
-    @discord.app_commands.command(
+    @app_commands.command(
         name="remix", description="Generate a remix image using Gemini API."
     )
-    @discord.app_commands.describe(user="The user to generate a remix image of.")
-    @discord.app_commands.describe(prompt="The prompt to generate a remix image of.")
+    @app_commands.describe(user="The user to generate a remix image of.")
+    @app_commands.describe(prompt="The prompt to generate a remix image of.")
     async def remix(
         self, interaction: discord.Interaction, user: discord.Member, prompt: str
     ):
@@ -222,10 +225,10 @@ class Gemini(commands.Cog):
         )
 
     # Add the /last command
-    @discord.app_commands.command(
+    @app_commands.command(
         name="last", description="Create a collage of the most recent generated images."
     )
-    @discord.app_commands.describe(
+    @app_commands.describe(
         number="Number of recent images to include in collage (default: 25)"
     )
     async def last(self, interaction: discord.Interaction, number: int = 25):

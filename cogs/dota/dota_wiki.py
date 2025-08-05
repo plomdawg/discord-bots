@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, List, Tuple, TypeVar
 import discord
 import requests
 from bs4 import BeautifulSoup, Tag
+from discord import app_commands
 from discord.ext import commands
 
 from cogs.common.utils import PLOMBOT_DEV_GUILD
@@ -220,11 +221,11 @@ class DotaWiki(commands.Cog):
             self.log(f"Error scraping rune icons: {e}")
             return 0, 0
 
-    @discord.app_commands.command(
+    @app_commands.command(
         name="scrape_icons",
         description="Scrape hero and rune icons from the Dota 2 wiki.",
     )
-    @discord.app_commands.guilds(PLOMBOT_DEV_GUILD)
+    @app_commands.guilds(PLOMBOT_DEV_GUILD)
     async def scrape_icons(self, interaction: discord.Interaction):
         """Scrape hero and rune icons from the Dota 2 wiki."""
         message = await self.bot.messaging.send_embed(

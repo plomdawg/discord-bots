@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import discord
 import lyricsgenius
+from discord import app_commands
 from discord.ext import commands
 from lyricsgenius.types.song import Song
 
@@ -28,16 +29,15 @@ class Genius(commands.Cog):
             song.lyrics = song.lyrics.split("Read More ")[1]
         return song
 
-    @discord.app_commands.command(name="lyrics", description="Get lyrics from Genius")
-    @discord.app_commands.describe(song="Song name (default: current song)")
-    @discord.app_commands.describe(artist="Artist name (default: current artist)")
+    @app_commands.command(name="lyrics", description="Get lyrics from Genius")
+    @app_commands.describe(song="Song name (default: current song)")
+    @app_commands.describe(artist="Artist name (default: current artist)")
     async def lyrics(
         self,
         interaction: discord.Interaction,
         song: str = "",
         artist: str = "",
     ):
-
         assert isinstance(interaction.channel, discord.TextChannel)
         # Format the song and artist names.
         text = f" > {bold(song)}"

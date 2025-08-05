@@ -4,6 +4,7 @@ import pathlib
 from typing import TYPE_CHECKING
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from cogs.dota.utils import upload_icons_to_servers
@@ -48,8 +49,8 @@ class Emojis(commands.Cog):
                 self.emojis[emoji.name] = str(emoji)
         self.bot.log(f"Loaded {len(self.emojis.keys())} emojis.")
 
-    @discord.app_commands.check(user_is_plomdawg)
-    @discord.app_commands.command(name="setup", description="Set up the emojis")
+    @app_commands.check(user_is_plomdawg)
+    @app_commands.command(name="setup", description="Set up the emojis")
     async def setup_emojis(self, interaction: discord.Interaction):
         """Uploads all the hero icons onto 3 different servers (50 max each)"""
         message = await self.bot.messaging.send_embed(

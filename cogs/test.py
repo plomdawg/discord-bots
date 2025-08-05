@@ -5,6 +5,7 @@ This cog provides test functionality.
 from typing import TYPE_CHECKING
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 if TYPE_CHECKING:
@@ -16,7 +17,7 @@ class Test(commands.Cog):
         self.bot = bot
 
     # Add the /hello command
-    @discord.app_commands.command()
+    @app_commands.command()
     async def hello(self, interaction: discord.Interaction):
         """Says hello!"""
         text = f"Hi, {interaction.user.mention}"

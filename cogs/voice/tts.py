@@ -4,6 +4,7 @@ import time
 from typing import TYPE_CHECKING
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from cogs.audio.types import AudioTrack
@@ -33,9 +34,7 @@ class TTS(commands.Cog):
         """Log a message to the bot."""
         self.bot.log(f"[TTS] {message}")
 
-    @discord.app_commands.command(
-        name="reload-voices", description="Reload the TTS voices"
-    )
+    @app_commands.command(name="reload-voices", description="Reload the TTS voices")
     async def reload_voices(self, interaction: discord.Interaction):
         """Reload the TTS voices."""
         start = time.time()

@@ -7,6 +7,7 @@ import traceback
 from typing import TYPE_CHECKING
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 if TYPE_CHECKING:
@@ -55,28 +56,28 @@ class ErrorHandler(commands.Cog):
         await ctx.send("An unexpected error occurred. Please try again later.")
 
     async def on_app_command_error(
-        self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError
+        self,
+        interaction: discord.Interaction,
+        error: app_commands.AppCommandError,
     ):
         """Handle application command (slash command) errors."""
-        if isinstance(error, discord.app_commands.CommandOnCooldown):
+        if isinstance(error, app_commands.CommandOnCooldown):
             await interaction.response.send_message(
                 f"Command is on cooldown. Try again in {error.retry_after:.2f} seconds.",
-                ephemeral=True
+                ephemeral=True,
             )
             return
 
-        if isinstance(error, discord.app_commands.MissingPermissions):
+        if isinstance(error, app_commands.MissingPermissions):
             await interaction.response.send_message(
-                "You don't have permission to use this command.",
-                ephemeral=True
+                "You don't have permission to use this command.", ephemeral=True
             )
             self.bot.error(f"Missing permissions in app command: {error}")
             return
 
-        if isinstance(error, discord.app_commands.BotMissingPermissions):
+        if isinstance(error, app_commands.BotMissingPermissions):
             await interaction.response.send_message(
-                "I don't have the required permissions to do that.",
-                ephemeral=True
+                "I don't have the required permissions to do that.", ephemeral=True
             )
             self.bot.error(f"Bot missing permissions in app command: {error}")
             return
@@ -84,17 +85,17 @@ class ErrorHandler(commands.Cog):
         # Log unexpected errors with full traceback
         self.bot.error(f"Unexpected app command error: {error}")
         self.bot.error(f"Full traceback: {traceback.format_exc()}")
-        
+
         try:
             if not interaction.response.is_done():
                 await interaction.response.send_message(
                     "An unexpected error occurred. Please try again later.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
             else:
                 await interaction.followup.send(
                     "An unexpected error occurred. Please try again later.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
         except Exception as e:
             self.bot.error(f"Failed to send error message: {e}")

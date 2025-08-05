@@ -1,5 +1,5 @@
 import discord
-from discord import Embed
+from discord import Embed, app_commands
 from discord.ext import commands
 
 command_list = """
@@ -29,7 +29,7 @@ class Help(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @discord.app_commands.command(name="help", description="Learn how to use this bot")
+    @app_commands.command(name="help", description="Learn how to use this bot")
     async def _help(self, interaction: discord.Interaction):
         """Sends help message"""
         embed = Embed()
