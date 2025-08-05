@@ -202,8 +202,8 @@ def find_voice_responses_by_hero(hero_name: str) -> List[Response]:
 
 
 def find_voice_responses_exact(text: str) -> List[Response]:
-    """Return all voice responses that exactly match the given text (case-insensitive)."""
-    return db.query(Response).filter(Response.text.ilike(text)).all()
+    """Return all voice responses that exactly match the given text."""
+    return db.query(Response).filter(Response.text == text).all()
 
 
 def get_voice(voice_id: int) -> Voice:

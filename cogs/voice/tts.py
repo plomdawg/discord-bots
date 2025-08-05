@@ -1,7 +1,7 @@
 import pathlib
 import random
 import time
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
@@ -9,7 +9,6 @@ from discord.ext import commands
 from cogs.audio.types import AudioTrack
 from cogs.common import utils
 from cogs.common.messaging import bold, code, quoted_text
-from cogs.voice.tts_elevenlabs import get_elevenlabs_voices
 from cogs.voice.tts_fish import get_fish_voices
 from cogs.voice.tts_piper import get_piper_voices
 from cogs.voice.tts_types import Voice
@@ -27,7 +26,8 @@ AUDIO_DIRECTORY.mkdir(parents=True, exist_ok=True)
 class TTS(commands.Cog):
     def __init__(self, bot: "VoiceBot"):
         self.bot = bot
-        self.voices: List[Voice] = []
+        self.voices: list[Voice] = []
+        self.enable_message_handler = True  # Flag to control message handling
 
     def log(self, message: str):
         """Log a message to the bot."""
@@ -78,6 +78,14 @@ class TTS(commands.Cog):
 
         # Load Fish voices
         self.load_voices_from_source(get_fish_voices, "Fish TTS")
+
+    def get_voice_by_name(self, name: str) -> Voice | None:
+        """Get a voice by name, case insensitive."""
+        name = name.lower()
+        for voice in self.voices:
+            if voice.name.lower() == name:
+                return voice
+        return None
 
     def get_voice_and_text(self, message) -> "tuple[Voice, str]":
         """Get the voice for a message and return the cleaned text with voice name removed.
@@ -131,13 +139,85 @@ class TTS(commands.Cog):
         voice = random.Random(message.id).choice(list(self.voices))
         return voice, content_without_prefix
 
-    async def fail(self, message: discord.Message, error: str):
-        """Send a failure message to the user."""
-        await self.bot.messaging.add_reactions(message, ["❌"])
+    async def play(
+        self, voice_channel: discord.VoiceChannel, voice_name: str, text: str
+    ) -> None:
+        """Play TTS in a voice channel.
+
+        Args:
+            voice_channel: The voice channel to play in
+            voice_name: Name of the voice to use
+            text: Text to speak
+        """
+        # Get the voice
+        voice = self.get_voice_by_name(voice_name)
+        if not voice:
+            self.log(f"Voice not found: {voice_name}")
+            return
+
+        # Set the audio path
+        mp3_path = AUDIO_DIRECTORY / f"{int(time.time())}.mp3"
+
+        # Generate and save the audio
+        try:
+            if not mp3_path.exists():
+                self.log(f"[{voice.name}] Generating TTS audio: {mp3_path}")
+                voice.save_audio(text, mp3_path)
+        except Exception as e:
+            self.log(f"Error generating audio: {e}")
+            return
+
+        # Play the audio
+        try:
+            track = AudioTrack(name=mp3_path.stem, path=mp3_path)
+            await self.bot.audio.play(voice_channel, track)
+        except Exception as e:
+            self.log(f"Error playing audio: {e}")
+            return
+
+    @commands.Cog.listener()
+    @utils.ignore_self
+    async def on_message(self, message: discord.Message):
+        if not self.enable_message_handler:
+            return
+
+        # Help message.
+        if message.content.startswith(self.bot.prefix + "help"):
+            await self.send_help(message.channel)
+            return
+
+        # Play TTS messages that start with the prefix.
+        if message.content.startswith(self.bot.prefix):
+            await self.handle_message_tts(message, message.author)
+
+    @commands.Cog.listener()
+    @utils.ignore_self
+    async def on_reaction_add(self, reaction: discord.Reaction, user: discord.User):
+        if not self.enable_message_handler:
+            return
+
+        # Replay TTS messages if the reaction is a 🔄.
+        if reaction.emoji == "🔄":
+            await self.handle_message_tts(reaction.message, user)
+
+    async def send_help(self, channel):
+        """Send the help message to the channel."""
+        categories = set(voice.category for voice in self.voices)
+        line = "-----------\n"
+        text = (
+            f"Usage: `{self.bot.prefix}[text]` or `{self.bot.prefix}[voice] [text]`\n\n"
+        )
+        for category in sorted(categories):
+            text += f"{bold(category)} voices:\n"
+            for voice in sorted(self.voices, key=lambda v: v.name):
+                if voice.category == category:
+                    text += f" {code(voice.name)}"
+            text += "\n"
+            text += line
+
+        text = text[: -len(line)]  # Remove the last line break.
         await self.bot.messaging.send_embed(
-            message.channel,
-            text=error,
-            color=discord.Color.red(),
+            channel, text=text, color=discord.Color.dark_purple()
         )
 
     async def handle_message_tts(self, message: discord.Message, user):
@@ -239,43 +319,13 @@ class TTS(commands.Cog):
             error = f"An unexpected error occurred: {str(e)}"
             return await self.fail(message, error)
 
-    @commands.Cog.listener()
-    @utils.ignore_self
-    async def on_message(self, message: discord.Message):
-        # Help message.
-        if message.content.startswith(self.bot.prefix + "help"):
-            await self.send_help(message.channel)
-            return
-
-        # Play TTS messages that start with the prefix.
-        if message.content.startswith(self.bot.prefix):
-            await self.handle_message_tts(message, message.author)
-
-    @commands.Cog.listener()
-    @utils.ignore_self
-    async def on_reaction_add(self, reaction: discord.Reaction, user: discord.User):
-        # Replay TTS messages if the reaction is a 🔄.
-        if reaction.emoji == "🔄":
-            await self.handle_message_tts(reaction.message, user)
-
-    async def send_help(self, channel):
-        """Send the help message to the channel."""
-        categories = set(voice.category for voice in self.voices)
-        line = "-----------\n"
-        text = (
-            f"Usage: `{self.bot.prefix}[text]` or `{self.bot.prefix}[voice] [text]`\n\n"
-        )
-        for category in sorted(categories):
-            text += f"{bold(category)} voices:\n"
-            for voice in sorted(self.voices, key=lambda v: v.name):
-                if voice.category == category:
-                    text += f" {code(voice.name)}"
-            text += "\n"
-            text += line
-
-        text = text[: -len(line)]  # Remove the last line break.
+    async def fail(self, message: discord.Message, error: str):
+        """Send a failure message to the user."""
+        await self.bot.messaging.add_reactions(message, ["❌"])
         await self.bot.messaging.send_embed(
-            channel, text=text, color=discord.Color.dark_purple()
+            message.channel,
+            text=error,
+            color=discord.Color.red(),
         )
 
 

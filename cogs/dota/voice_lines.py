@@ -164,7 +164,7 @@ class VoiceLines(commands.Cog):
             return await self.bot.messaging.send_embed(channel=text_channel, text=msg)
 
         # Ensure the author is in a voice channel.
-        if not await self.bot.utils.author_has_voice(message, "play a voice line"):
+        if not await self.bot.utils.author_has_voice(message, ""):
             return
 
         response = responses[index]

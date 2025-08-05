@@ -3,11 +3,12 @@
 import asyncio
 import random
 import time
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 import discord
 from discord.ext import commands
 
+from cogs.common.utils import MY_DUDES_GUILD
 from cogs.dota import utils
 
 if TYPE_CHECKING:
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
 
 # Pictures used for the embedded messages.
 SHOPKEEPER_IMAGE = "https://i.imgur.com/Xyf1VjQ.png"
+SHOPKEEPER_SAD_IMAGE = "https://i.imgur.com/YNEgwBb.png"
 UNKNOWN_IMAGE = "https://static.wikia.nocookie.net/dota2_gamepedia/images/5/5d/Unknown_Unit_icon.png/revision/latest/scale-to-width-down/128?cb=20170416184928"
 
 
@@ -68,7 +70,7 @@ class Quiz:
         self.in_progress = False
         self.round_time = 23  # seconds
         self.max_gold = 3  # total possible gold for an answer.
-        self.current_word = None
+        self.current_word: Optional[Word] = None
         self.channel = channel  # discord text channel.
         self.guesses = {}  # current guesses for a round.
 
@@ -108,6 +110,9 @@ class Quiz:
         embed.title = f"Shopkeeper's Quiz (round {self.round_number})"
 
         # Add the scrambled word.
+        if self.current_word is None:
+            return None, embed
+
         if easy:
             scrambled = easy_scramble(self.current_word.text)
         else:
@@ -135,7 +140,7 @@ class Quiz:
                 embed.set_thumbnail(url=SHOPKEEPER_IMAGE)
 
         # Add the hint.
-        if hint:
+        if hint and self.current_word.get_hint():
             description += f"\n**Hint:** {self.current_word.get_hint()} "
             embed.set_footer(text="*Here's another hint!*")
 
@@ -147,6 +152,10 @@ class Quiz:
         embed.description = description
         await message.edit(embed=embed)
 
+        # Add TTS reaction if this is in the my dudes server.
+        if self.channel.guild == MY_DUDES_GUILD:
+            await message.add_reaction("🗣️")
+
         # Wait for the answer.
         try:
             answer = await self.bot.wait_for(
@@ -157,6 +166,30 @@ class Quiz:
 
         # Return the answer, or None.
         return answer, embed
+
+    async def handle_tts(self, message: discord.Message, user: discord.Member):
+        """Handle TTS for the current quiz word."""
+        # Check if the user is in a voice channel.
+        if (
+            not user.voice
+            or not user.voice.channel
+            or not isinstance(user.voice.channel, discord.VoiceChannel)
+        ):
+            return
+
+        # Get the scrambled word from the embed description
+        if not message.embeds or not message.embeds[0].description:
+            return
+
+        description = message.embeds[0].description
+        try:
+            scrambled = description.split("**Unscramble:** ")[1].split("\n")[0]
+        except IndexError:
+            return
+
+        # Play the scrambled word using TTS
+        if self.bot.tts is not None:
+            await self.bot.tts.play(user.voice.channel, "Axe", scrambled)
 
     async def start_round(self):
         """Start a round."""
@@ -185,6 +218,8 @@ class Quiz:
             except KeyError:
                 self.guesses[msg.author] = [msg.content]
 
+            if self.current_word is None:
+                return False
             return self.current_word.check(msg.content)
 
         # Begin phase 1: hard scramble.
@@ -201,7 +236,11 @@ class Quiz:
             )
 
         # Begin phase 4 if we have a hint: easy scramble with a hint.
-        if answer is None and self.current_word.get_hint() is not None:
+        if (
+            answer is None
+            and self.current_word is not None
+            and self.current_word.get_hint() is not None
+        ):
             answer, embed = await self.start_phase(
                 message, check, category=True, easy=True, hint=True
             )
@@ -211,11 +250,14 @@ class Quiz:
         #
 
         # Add the answer to the quiz message.
-        embed.description += f"\n**Answer**: {self.current_word.emoji or ''} [{self.current_word.text}]({self.current_word.url})"
+        if self.current_word is not None:
+            if embed.description is None:
+                embed.description = ""
+            embed.description += f"\n**Answer**: {self.current_word.emoji or ''} [{self.current_word.text}]({self.current_word.url})"
 
-        # Add the image to the quiz message.
-        if self.current_word.image is not None:
-            embed.set_thumbnail(url=self.current_word.image)
+            # Add the image to the quiz message.
+            if self.current_word.image is not None:
+                embed.set_thumbnail(url=self.current_word.image)
 
         # Somebody answered!
         if answer:
@@ -234,7 +276,8 @@ class Quiz:
         # Game over if nobody answered.
         if answer is None:
             # Send a thumbs down on the quiz message.
-            await message.add_reaction("👎")
+            if message is not None:
+                await message.add_reaction("👎")
 
             # Set the footer.
             embed.set_footer(text="Nobody answered in time! Game over.")
@@ -243,7 +286,8 @@ class Quiz:
             self.in_progress = False
 
         # Edit the message.
-        await message.edit(embed=embed)
+        if message is not None:
+            await message.edit(embed=embed)
 
     async def start(self):
         """Start the quiz."""
@@ -265,12 +309,11 @@ class Quiz:
 
     async def end(self):
         """Handles a game over."""
+        # Default to the happy shopkeeper.
+        thumbnail = SHOPKEEPER_IMAGE
+
         # Find the top score.
-        try:
-            top_score = max(self.scores.values())
-        except ValueError:
-            top_score = 0
-            return
+        top_score = max(self.scores.values(), default=0)
 
         # Find the winners and losers. There may be more than one winner if tied.
         winners = []
@@ -284,6 +327,7 @@ class Quiz:
         # If there are no winners, everybody lost!
         if len(winners) == 0:
             text = "Everybody lost!"
+            thumbnail = SHOPKEEPER_SAD_IMAGE
 
         # Single winner.
         elif len(winners) == 1:
@@ -310,10 +354,11 @@ class Quiz:
             channel=self.channel,
             title="Shopkeeper's Quiz Results",
             text=text,
-            thumbnail=SHOPKEEPER_IMAGE,
+            thumbnail=thumbnail,
             footer=f"To play again, press NEW or type /quiz",
         )
-        await message.add_reaction("🆕")
+        if message is not None:
+            await message.add_reaction("🆕")
 
 
 class ShopkeeperQuiz(commands.Cog):
@@ -330,16 +375,8 @@ class ShopkeeperQuiz(commands.Cog):
         """Load the words when the bot is ready."""
         self.load_words()
 
-    @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
-        # Ignore own reactions
-        if user == self.bot.user:
-            return
-
-        # Ignore messages not sent by the bot
-        if reaction.message.author != self.bot.user:
-            return
-
+    async def handle_reaction_add(self, reaction, user):
+        """Handle a reaction add event."""
         # NEW quiz
         if reaction.emoji in "🆕":
             """Remove own reaction and start quiz"""
@@ -350,6 +387,12 @@ class ShopkeeperQuiz(commands.Cog):
             asyncio.ensure_future(
                 self.shopkeeper_quiz(bot=self.bot, channel=reaction.message.channel)
             )
+        # TTS reaction
+        elif reaction.emoji == "🗣️":
+            # Get the quiz for this guild
+            quiz = self.quizzes.get(reaction.message.guild)
+            if quiz and quiz.in_progress:
+                await quiz.handle_tts(reaction.message, user)
         else:
             # Unknown emoji, do nothing
             return
@@ -359,6 +402,18 @@ class ShopkeeperQuiz(commands.Cog):
             await reaction.remove(user)
         except discord.errors.NotFound:
             pass
+
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction, user):
+        # Ignore own reactions
+        if user == self.bot.user:
+            return
+
+        # Ignore messages not sent by the bot
+        if reaction.message.author != self.bot.user:
+            return
+
+        asyncio.ensure_future(self.handle_reaction_add(reaction, user))
 
     def load_words(self):
         self.words = []

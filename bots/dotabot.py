@@ -6,13 +6,14 @@ import asyncio
 import typing
 
 from bot import DiscordBot
-from cogs.dota.dota_wiki import DotaWiki
 from cogs.dota.emojis import Emojis
+from cogs.voice.tts import TTS
 
 
 class DotaBot(DiscordBot):
     def __init__(self, name: str):
         super().__init__(name)
+        self.tts: TTS | None = None
 
     async def start(self):
         # Load the cogs used by the Dota bot.
@@ -22,6 +23,9 @@ class DotaBot(DiscordBot):
         await self.load_cog("dota.opendota", "OpenDota")
         await self.load_cog("dota.voice_lines", "VoiceLines")
         await self.load_cog("dota.help", "Help")
+
+        self.tts = typing.cast(TTS, await self.load_cog("voice.tts", "TTS"))
+        self.tts.enable_message_handler = False
 
         await super().start(token=self.secrets.get("DOTABOT_DISCORD_SECRET_TOKEN"))
 

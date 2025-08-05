@@ -145,10 +145,12 @@ class AudioQueue:
             symbol = "⭄" if self.position == start + i else "--"
 
             # Remove brackets from track title and limit length
-            title = track.title[:length].translate(str.maketrans(dict.fromkeys("[]()")))
+            title = (track.title or track.name or "Unknown")[:length].translate(
+                str.maketrans(dict.fromkeys("[]()"))
+            )
 
             track_list += " {} {} [{}]({}) ({})\n".format(
-                symbol, start + i, title, track.youtube_url, duration
+                symbol, start + i, title, track.youtube_url or "#", duration
             )
 
             if i == max_tracks:
@@ -229,19 +231,38 @@ class AudioPlayer:
         self.current_source: Optional[discord.PCMVolumeTransformer] = None
         self.status = AudioPlayerStatus.STOPPED
 
-    async def connect(self, voice_channel):
+    async def connect(
+        self, voice_channel: discord.VoiceChannel
+    ) -> Optional[discord.VoiceClient]:
         """Connects to a voice channel. Returns the voice channel or None if error"""
         # Check if we already have a connected voice client
         if self.voice_client and self.voice_client.is_connected():
-            # Move to the user if nobody is in the room with the bot
-            if len(self.voice_client.channel.members) == 1:
-                await self.voice_client.move_to(voice_channel)
+            # If we're already in the requested channel, just return
+            if self.voice_client.channel == voice_channel:
+                return self.voice_client
+
+            # Only move if the current channel is empty of non-bot users
+            if (
+                isinstance(self.voice_client.channel, discord.VoiceChannel)
+                and len([m for m in self.voice_client.channel.members if not m.bot])
+                == 0
+            ):
+                try:
+                    self.bot.log(
+                        f"Moving from {self.voice_client.channel.name} to {voice_channel.name}"
+                    )
+                    await self.voice_client.move_to(voice_channel)
+                except Exception as e:
+                    self.bot.error(f"Failed to move to channel: {e}")
             return self.voice_client
 
         # Find the voice client for this server
-        self.voice_client = discord.utils.get(
-            self.bot.voice_clients, guild=voice_channel.guild
-        )
+        for vc in self.bot.voice_clients:
+            if isinstance(vc, discord.VoiceClient) and vc.guild == voice_channel.guild:
+                self.voice_client = vc
+                break
+        else:
+            self.voice_client = None
 
         # If we found an existing client but it's not connected, clean it up
         if self.voice_client and not self.voice_client.is_connected():
@@ -254,18 +275,21 @@ class AudioPlayer:
         # Connect if we don't have a connected client
         if self.voice_client is None:
             try:
-                self.voice_client = await voice_channel.connect()
-                # Wait for connection to be established
-                timeout = 10  # 10 second timeout
-                while not self.voice_client.is_connected() and timeout > 0:
-                    await asyncio.sleep(0.1)
-                    timeout -= 0.1
+                self.bot.log(
+                    f"Attempting to connect to voice channel: {voice_channel.name}"
+                )
+                self.voice_client = await voice_channel.connect(
+                    timeout=15.0, reconnect=True
+                )
 
+                # Verify connection was successful
                 if not self.voice_client.is_connected():
-                    self.bot.error(
-                        "Failed to establish voice connection within timeout"
-                    )
+                    self.bot.error("Voice connection failed immediately after connect")
                     return None
+
+                self.bot.log(
+                    f"Successfully connected to voice channel: {voice_channel.name}"
+                )
 
             except discord.errors.ClientException as e:
                 self.bot.error(f"ClientException during voice connect: {e}")
@@ -273,16 +297,40 @@ class AudioPlayer:
             except asyncio.TimeoutError as e:
                 self.bot.error(f"TimeoutError during voice connect: {e}")
                 return None
+            except Exception as e:
+                self.bot.error(f"Unexpected error during voice connect: {e}")
+                return None
 
-        # Move to the user if nobody is in the room with the bot
-        if self.voice_client is not None and self.voice_client.is_connected():
-            if len(self.voice_client.channel.members) == 1:
-                await self.voice_client.move_to(voice_channel)
+        # Only move if we're in a different channel than requested and the current channel is empty
+        if (
+            self.voice_client is not None
+            and self.voice_client.is_connected()
+            and self.voice_client.channel != voice_channel
+        ):
+            if (
+                isinstance(self.voice_client.channel, discord.VoiceChannel)
+                and len([m for m in self.voice_client.channel.members if not m.bot])
+                == 0
+            ):
+                try:
+                    await self.voice_client.move_to(voice_channel)
+                except Exception as e:
+                    self.bot.error(f"Failed to move to requested channel: {e}")
 
         return self.voice_client
 
     async def play(self, channel: discord.VoiceChannel) -> None:
         """Starts playback in the given voice channel."""
+        # Check if we're already playing in the requested channel
+        if (
+            self.voice_client
+            and self.voice_client.is_connected()
+            and self.voice_client.channel == channel
+            and self.status == AudioPlayerStatus.PLAYING
+        ):
+            self.bot.log("Already playing in the requested channel")
+            return
+
         voice_client = await self.connect(channel)
 
         if voice_client is None or not voice_client.is_connected():

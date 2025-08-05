@@ -28,6 +28,10 @@ pillow
 dotabase
 sqlalchemy_utils
 
+# OpenDota API
+opendota2py
+
+
 # Lyrics Genius API
 lyricsgenius
 

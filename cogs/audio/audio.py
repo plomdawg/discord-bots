@@ -45,7 +45,12 @@ class Audio(commands.Cog):
         await player.play(voice_channel)
 
     @commands.Cog.listener(name="on_voice_state_update")
-    async def disconnect_if_alone(self, member, before, after):
+    async def disconnect_if_alone(
+        self,
+        member: discord.Member,
+        before: discord.VoiceState,
+        after: discord.VoiceState,
+    ) -> None:
         """Called when a user changes their voice state
 
         Args:
@@ -55,6 +60,10 @@ class Audio(commands.Cog):
 
         Leaves and clears the queue if the bot is left alone for 3 minutes
         """
+        # Skip if this is the bot itself changing state
+        if self.bot.user is not None and member.id == self.bot.user.id:
+            return
+
         # Try to find the voice client for this guild.
         voice_client = None
         for vc in self.bot.voice_clients:
@@ -67,33 +76,67 @@ class Audio(commands.Cog):
         if voice_client is None:
             return
 
-        # If there are any non-bots in the channel, do nothing.
-        if any([not user.bot for user in voice_client.channel.members]):
+        # Ensure we have a proper voice channel with members attribute
+        if not isinstance(voice_client.channel, discord.VoiceChannel):
             return
+
+        # If there are any non-bots in the channel, do nothing.
+        non_bot_members = [
+            user for user in voice_client.channel.members if not user.bot
+        ]
+        if non_bot_members:
+            return
+
+        self.bot.log(
+            f"Bot is alone in {voice_client.channel.name}, starting disconnect timer"
+        )
 
         # Save the bot's current channel.
         bot_channel = voice_client.channel
 
         # If the bot is alone in the channel, start the timer.
         # Loop until somebody comes back, or the timer runs out.
-        timeout = 180  # seconds before disconnecting
-        step = 15  # seconds between checks
-        for _ in range(0, int(timeout / step)):
+        timeout = 60  # seconds before disconnecting (reduced from 180)
+        step = 10  # seconds between checks
+        for i in range(0, int(timeout / step)):
             await asyncio.sleep(step)
 
-            # Check if a non-bot has joined the channel.
-            if any([not user.bot for user in voice_client.channel.members]):
+            # Check if the bot has been disconnected or moved
+            if voice_client is None or not voice_client.is_connected():
+                self.bot.log(
+                    "Voice client disconnected during timer, stopping disconnect sequence"
+                )
                 return
 
-            # Check if the bot has been disconnected.
-            if voice_client is None or not voice_client.is_connected():
+            # Ensure we still have a proper voice channel
+            if not isinstance(voice_client.channel, discord.VoiceChannel):
+                self.bot.log(
+                    "Voice channel no longer valid, stopping disconnect sequence"
+                )
                 return
 
             # Check if the bot has been moved to a different channel.
-            if voice_client.channel is not bot_channel:
+            if voice_client.channel != bot_channel:
+                self.bot.log(
+                    "Bot moved to different channel, stopping disconnect sequence"
+                )
                 return
 
-        # If the bot is still alone, disconnect.
+            # Check if a non-bot has joined the channel.
+            non_bot_members = [
+                user for user in voice_client.channel.members if not user.bot
+            ]
+            if non_bot_members:
+                self.bot.log(
+                    f"Non-bot user joined {voice_client.channel.name}, stopping disconnect sequence"
+                )
+                return
+
+        # If the bot is still alone, disconnect and clear the queue.
+        self.bot.log(f"Timeout reached, disconnecting from {voice_client.channel.name}")
+        if voice_client.guild is not None:
+            player = self.get_player(voice_client.guild)
+            player.queue.clear()
         await voice_client.disconnect()
 
 
