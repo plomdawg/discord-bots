@@ -16,7 +16,14 @@ A collection of Discord bots with shared functionality, built using discord.py. 
 - Spotify and YouTube support
 
 ### Voicebot
-- AI Text-to-speech capabilities
+- AI Text-to-speech capabilities with multiple voice options:
+  - Piper voices
+  - Fish TTS voices
+  - ElevenLabs voices
+- AI Image Generation using Gemini:
+  - Generate images from text prompts
+  - User avatar remixing with custom prompts
+- Message-based TTS with voice selection
 
 ## Project Structure
 
