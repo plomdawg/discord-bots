@@ -6,7 +6,8 @@ __pycache__/
 .vscode/
 
 # Generated files
-audio/
+*.mp3
+*.txt
 images/
 assets/
 static/
