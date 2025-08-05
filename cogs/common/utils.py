@@ -65,18 +65,25 @@ class Utils(commands.Cog):
         # Failed to find a voice channel.
         return None
 
-    async def author_has_voice(self, message: discord.Message, reason: str):
+    async def user_has_voice(
+        self, user: discord.Member, channel: discord.TextChannel, reason: str
+    ) -> bool:
         """Returns True if the user is connected to a voice channel.
         Sends the message if the user is not connected."""
-        if not (message.author.voice and message.author.voice.channel):
+        if not (user.voice and user.voice.channel):
             if reason != "":
                 thumbnail = "http://i.imgur.com/go67eLE.gif"
-                error = f"{message.author.mention} you must be in a voice channel to {reason}."
+                error = f"{user.mention} you must be in a voice channel to {reason}."
                 await self.bot.messaging.send_error(
-                    message.channel, text=error, thumbnail=thumbnail
+                    channel, text=error, thumbnail=thumbnail
                 )
             return False
         return True
+
+    async def author_has_voice(self, message: discord.Message, reason: str) -> bool:
+        """Returns True if the user is connected to a voice channel.
+        Sends the message if the user is not connected."""
+        return await self.user_has_voice(message.author, message.channel, reason)
 
     def server_info(self):
         """
