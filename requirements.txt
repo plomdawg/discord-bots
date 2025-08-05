@@ -40,3 +40,14 @@ pre-commit
 isort
 yamllint
 
+
+# Fish TTS dependencies
+#torchaudio
+gradio_client
+#fish-speech @ git+https://github.com/fishaudio/fish-speech.git
+
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+jinja2==3.1.2
+pydantic==2.4.2
