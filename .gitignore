@@ -18,3 +18,4 @@ models/
 # Database
 *.sqlite
 data/runes.json
+.cache
