@@ -1,6 +1,6 @@
 # Discord.py library
 # https://github.com/Rapptz/discord.py
-discord.py[voice]
+discord.py[voice] @ git+https://github.com/Rapptz/discord.py
 
 # Used to color output logs.
 colorama
