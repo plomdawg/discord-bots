@@ -33,12 +33,12 @@ def format_title(title) -> str:
     return title_format.sub("", _title).strip()
 
 
-def volume_bar(volume):
+def volume_bar(volume: float) -> str:
     """Returns an ASCII volume bar for the given volume.
 
-    volume_bar(25): █████░░░░░░░░░░░░░░░
+    volume_bar(0.25): █████░░░░░░░░░░░░░░░
     """
     length = 20
-    filled = int(volume * length / 100)
+    filled = int(volume * length)
     unfilled = length - filled
     return "█" * filled + "░" * unfilled

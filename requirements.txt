@@ -31,6 +31,14 @@ sqlalchemy_utils
 # OpenDota API
 opendota2py
 
+# Youtube-dl
+yt-dlp
+
+# Youtube API
+python-youtube
+
+# Spotify API
+spotipy
 
 # Lyrics Genius API
 lyricsgenius

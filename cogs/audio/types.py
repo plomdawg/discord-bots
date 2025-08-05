@@ -2,7 +2,6 @@ import asyncio
 import enum
 import pathlib
 import random
-import typing
 from typing import TYPE_CHECKING, List, Optional
 
 import discord
@@ -40,13 +39,37 @@ class AudioTrack:
         self.spotify_url = kwargs.get("spotify_url")
         # Thumbnail URL for the track
         self.thumbnail = kwargs.get("thumbnail")
+        # User who requested the track
+        self.user = kwargs.get("user")
+        # Link to display (YouTube or Spotify URL)
+        self.link = kwargs.get("link") or self.youtube_url or self.spotify_url
 
-    def audio_source(self, volume: float) -> discord.PCMVolumeTransformer:
+    def __str__(self):
+        return f"{self.title} - {self.duration} - {self.youtube_url}"
+
+    async def audio_source(self, volume: float) -> discord.PCMVolumeTransformer:
         """Returns an appropriate audio source for this track."""
-        source = self.source_url or str(self.path)
-        ffmpeg_options = f"-ss {self.position}"
+        # For local files, use the path directly
+        if self.path and self.path.exists():
+            source = str(self.path)
+        else:
+            # Use the source URL directly (should be a streaming URL)
+            source = self.source_url
+            if not source:
+                raise ValueError("No audio source available for this track")
+
+        # Use better FFmpeg options for streaming
+        ffmpeg_before_options = (
+            "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+        )
+        ffmpeg_options = f"-vn -ss {self.position}"
+
         return discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(source=source, options=ffmpeg_options),
+            discord.FFmpegPCMAudio(
+                source=source,
+                before_options=ffmpeg_before_options,
+                options=ffmpeg_options,
+            ),
             volume=volume,
         )
 
@@ -62,13 +85,13 @@ class AudioQueue:
 
     def __init__(self, bot: "DiscordBot"):
         self.bot = bot
-        self.tracks = []  # type: typing.List[AudioTrack]
-        self.position = 0  # type: int
+        self.tracks: List[AudioTrack] = []
+        self.position: int = 0
         self.queue_message = None
         self.repeat_mode = RepeatMode.OFF
 
     @property
-    def current_track(self) -> typing.Optional[AudioTrack]:
+    def current_track(self) -> Optional[AudioTrack]:
         """Returns the current track."""
         try:
             return self.tracks[self.position]
@@ -89,16 +112,16 @@ class AudioQueue:
         """Adds a track to the queue up next."""
         self.tracks.insert(self.position + 1, track)
 
-    def add_list(self, tracks: typing.List[AudioTrack]):
+    def add_list(self, tracks: List[AudioTrack]):
         """Adds a list of tracks to the queue."""
         self.tracks.extend(tracks)
 
-    def add_list_next(self, tracks: typing.List[AudioTrack]):
+    def add_list_next(self, tracks: List[AudioTrack]):
         """Adds a list of tracks to the queue up next."""
         for track in reversed(tracks):
             self.add_next(track)
 
-    def clear(self) -> typing.List[AudioTrack]:
+    def clear(self) -> List[AudioTrack]:
         """Clears the queue and resets the position. Returns the skipped tracks."""
         cleared_tracks = self.tracks[self.position :]
         self.tracks = []
@@ -373,7 +396,7 @@ class AudioPlayer:
         self.status = AudioPlayerStatus.PLAYING
 
         # Get the audio source for the track.
-        audio_source = self.queue.current_track.audio_source(volume=self.volume)
+        audio_source = await self.queue.current_track.audio_source(volume=self.volume)
         self.current_source = audio_source
 
         def next_track(err=None):
