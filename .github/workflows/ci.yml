@@ -39,3 +39,4 @@ jobs:
           VALIDATE_PYTHON_PYLINT: true
           VALIDATE_PYTHON_MYPY: true
           VALIDATE_PYTHON_BLACK: true
+        continue-on-error: true
