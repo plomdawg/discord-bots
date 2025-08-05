@@ -39,8 +39,6 @@ class Audio(commands.Cog):
         """
         self.bot.log(f"Playing track {track.name} in {voice_channel.name}")
         player = self.get_player(voice_channel.guild)
-        # Set the bot instance on the track for logging
-        track.bot = self.bot
         player.queue.add(track)
         await player.play(voice_channel)
 

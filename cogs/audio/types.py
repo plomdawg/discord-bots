@@ -32,8 +32,6 @@ class AudioTrack:
         # Track metadata
         self.title = kwargs.get("title")
         self.data = kwargs.get("data")
-        # Bot instance for logging
-        self.bot = kwargs.get("bot")
         # Track duration in seconds
         self.duration = kwargs.get("duration", 0)
         # YouTube URL for the track
