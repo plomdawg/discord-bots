@@ -47,7 +47,8 @@ lyricsgenius
 pre-commit
 isort
 yamllint
-
+black
+mypy
 
 # Fish TTS dependencies
 #torchaudio
