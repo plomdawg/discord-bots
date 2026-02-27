@@ -186,7 +186,7 @@ class VoiceLines(commands.Cog):
 
     async def play_response(self, channel, url):
         # Use the audio cog to play the voice line
-        track = AudioTrack(name="voice_line", path=url)
+        track = AudioTrack(name="voice_line", source_url=url)
         await self.bot.audio.play(channel, track)
 
 
