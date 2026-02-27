@@ -58,9 +58,11 @@ class AudioTrack:
             if not source:
                 raise ValueError("No audio source available for this track")
 
-        # Use better FFmpeg options for streaming
+        # Reconnect options are only valid for HTTP streams, not local files
         ffmpeg_before_options = (
             "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+            if self.source_url
+            else ""
         )
         ffmpeg_options = f"-vn -ss {self.position}"
 
