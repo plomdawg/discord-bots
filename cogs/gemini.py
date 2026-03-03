@@ -36,6 +36,27 @@ class Gemini(commands.Cog):
         """Log a message to the bot."""
         self.bot.log(f"[Gemini] {message}")
 
+    def format_api_error(self, e: Exception) -> str:
+        """Format a Gemini API error into a readable one-liner."""
+        import re
+        error_str = str(e)
+        try:
+            status_match = re.match(r"^(\d+\s+\w+)", error_str)
+            status = status_match.group(1) if status_match else None
+            brace_idx = error_str.find("{")
+            if brace_idx != -1:
+                import ast
+                error_dict = ast.literal_eval(error_str[brace_idx:])
+                message = error_dict.get("error", {}).get("message", "")
+                # First sentence only, drop docs/rate-limit URLs
+                first_line = re.split(r"\. (For more|To monitor)", message)[0]
+                if status:
+                    return f"{status}: {first_line}"
+                return first_line
+        except Exception:
+            pass
+        return error_str
+
     def generate_image(
         self, prompt: str, path: pathlib.Path, image: Optional[types.Part] = None
     ):
@@ -151,7 +172,7 @@ class Gemini(commands.Cog):
             self.log(f"{e.__class__.__name__}: {e.__str__()}")
             self.log(f"Error generating image: {e}")
             return await self.bot.messaging.send_error(
-                interaction.channel, text=f"Failed to generate image: {e}"
+                interaction.channel, text=f"Failed to generate image: {self.format_api_error(e)}"
             )
 
         # Send the image
