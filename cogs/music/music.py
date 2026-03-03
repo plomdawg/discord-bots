@@ -1,7 +1,7 @@
 """Music cog for music-related commands."""
 
 import typing
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 import discord
 from discord import app_commands
@@ -98,6 +98,7 @@ class MusicPlayer(AudioPlayer):
                     "⏸",  # pause
                     "⏭️",  # skip
                     "🛑",  # stop
+                    "🔊",  # volume
                 ],
             )
 
@@ -114,7 +115,7 @@ class MusicPlayer(AudioPlayer):
                 pass
 
     async def send_volume(
-        self, interaction: discord.Interaction
+        self, channel: Union[discord.Interaction, discord.TextChannel]
     ) -> Optional[discord.Message]:
         """Sends a volume message, if possible also deletes the last one"""
         if self.volume_message:
@@ -123,7 +124,7 @@ class MusicPlayer(AudioPlayer):
 
         # Send the new message
         self.volume_message = await self.bot.messaging.send_embed(
-            interaction,
+            channel,
             color=0x22FF33,
             title=f"Current volume: {self.volume * 100}%",
             text=volume_bar(self.volume),
@@ -575,6 +576,9 @@ class Music(commands.Cog):
                 await player.skip()
             elif emoji == "🛑":  # stop
                 await player.stop()
+            elif emoji == "🔊":  # show volume panel
+                if isinstance(message.channel, discord.TextChannel):
+                    await player.send_volume(message.channel)
 
         # Volume message reactions
         elif player.volume_message and message.id == player.volume_message.id:
