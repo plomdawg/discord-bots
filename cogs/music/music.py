@@ -126,7 +126,7 @@ class MusicPlayer(AudioPlayer):
         self.volume_message = await self.bot.messaging.send_embed(
             channel,
             color=0x22FF33,
-            title=f"Current volume: {self.volume * 100}%",
+            title=f"Current volume: {round(self.volume * 100)}%",
             text=volume_bar(self.volume),
         )
 
@@ -153,7 +153,7 @@ class MusicPlayer(AudioPlayer):
         try:
             await self.bot.messaging.edit_embed(
                 message=self.volume_message,
-                title=f"Current volume: {self.volume * 100}%",
+                title=f"Current volume: {round(self.volume * 100)}%",
                 text=volume_bar(self.volume),
                 footer=f"Changed by {user.display_name}",
                 footer_icon=user.display_avatar.with_size(64)
