@@ -535,6 +535,64 @@ class Music(commands.Cog):
         await player.send_now_playing(interaction.channel)
 
 
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction: discord.Reaction, user: discord.User):
+        """Handle emoji reactions on now playing and volume messages."""
+        # Ignore bot's own reactions
+        if user == self.bot.user:
+            return
+
+        if not isinstance(user, discord.Member) or not user.guild:
+            return
+
+        guild = user.guild
+        player = self.music_players.get(guild)
+        if player is None:
+            return
+
+        # Normalize emoji to handle variation selectors (e.g. ▶️ vs ▶)
+        emoji = str(reaction.emoji).replace("\uFE0F", "")
+        message = reaction.message
+
+        # Remove the user's reaction so they can press the button again
+        try:
+            await message.remove_reaction(reaction.emoji, user)
+        except (discord.errors.NotFound, discord.errors.Forbidden):
+            pass
+
+        # Now playing message reactions
+        if player.np_message and message.id == player.np_message.id:
+            if emoji == "⏮":  # previous track
+                # Subtract 2 so the next_track callback's +1 lands on position-1
+                player.queue.position = max(-1, player.queue.position - 2)
+                if player.voice_client:
+                    player.voice_client.stop()
+            elif emoji == "▶":  # resume
+                await player.resume()
+            elif emoji == "⏸":  # pause
+                await player.pause()
+            elif emoji == "⏭":  # skip
+                await player.skip()
+            elif emoji == "🛑":  # stop
+                await player.stop()
+
+        # Volume message reactions
+        elif player.volume_message and message.id == player.volume_message.id:
+            if emoji == "⏬":  # volume down 5%
+                player.set_volume(player.volume - 0.05)
+            elif emoji == "⬇":  # volume down 1%
+                player.set_volume(player.volume - 0.01)
+            elif emoji == "⬆":  # volume up 1%
+                player.set_volume(player.volume + 0.01)
+            elif emoji == "⏫":  # volume up 5%
+                player.set_volume(player.volume + 0.05)
+            elif emoji == "✳":  # volume reset to 20%
+                player.set_volume(0.20)
+
+            # Update the volume message to reflect the new level
+            await player.update_volume_message(user)
+
+
 async def setup(bot):
     """Adds the cog to the bot."""
     await bot.add_cog(Music(bot))
