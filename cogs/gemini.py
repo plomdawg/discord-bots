@@ -47,7 +47,7 @@ class Gemini(commands.Cog):
                 parts.append(image)
 
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash-preview-image-generation",
+                model="gemini-2.5-flash-image",
                 contents=[types.Content(parts=parts)],
                 config=types.GenerateContentConfig(
                     response_modalities=["TEXT", "IMAGE"]
