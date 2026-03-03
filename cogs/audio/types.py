@@ -427,7 +427,7 @@ class AudioPlayer:
 
     def set_volume(self, volume: float) -> float:
         """Set the player volume (0.0 to 1.0)."""
-        self.volume = max(0.0, min(1.0, volume))
+        self.volume = round(max(0.0, min(1.0, volume)), 2)
         if self.current_source:
             self.current_source.volume = self.volume
 
