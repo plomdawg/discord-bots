@@ -49,10 +49,8 @@ isort
 yamllint
 
 
-# Fish TTS dependencies
-#torchaudio
-gradio_client
-#fish-speech @ git+https://github.com/fishaudio/fish-speech.git
+# Fish TTS dependencies (via plomtts server)
+plomtts-client>=1.0.0
 
 fastapi==0.104.1
 uvicorn==0.24.0
