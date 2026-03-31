@@ -12,11 +12,10 @@ PLOMTTS_ENDPOINT = "http://192.168.8.175:8420"
 class FishSpeechGenerator(TTSGenerator):
     """Fish-Speech implementation of the TTS generator (via plomtts server)."""
 
-    def __init__(self, model_dir: pathlib.Path):
+    def __init__(self, name: str):
         """Initialize the FishSpeechGenerator."""
-        self.name = model_dir.name
-        self.model_dir = model_dir
-        self.backing_audio_mp3 = model_dir / "backing.mp3"
+        self.name = name
+        self.backing_audio_mp3 = pathlib.Path("models") / name / "backing.mp3"
 
     def save_audio(self, text: str, path: pathlib.Path):
         """Save the audio to a path."""
@@ -55,27 +54,15 @@ class FishSpeechGenerator(TTSGenerator):
 
 
 def get_fish_voices() -> List[Voice]:
-    """Get the voices from Fish Speech."""
-    model_dir = pathlib.Path("models")
-    voices: List[Voice] = []
-    for voice_dir in model_dir.iterdir():
-        if voice_dir.is_dir():
-            # Ensure there is either a .mp3 or .wav file in the model directory
-            if not any(voice_dir.glob("*.mp3")) and not any(voice_dir.glob("*.wav")):
-                print(
-                    f"Skipping because it doesn't have a .mp3 or .wav file: {voice_dir.name}"
-                )
-                continue
-
-            voice = Voice(
-                name=voice_dir.name,
-                generator=FishSpeechGenerator(voice_dir),
-                category="Fish",
-            )
-            avatar_path = voice_dir / "avatar.txt"
-            if avatar_path.exists():
-                voice.avatar = avatar_path.read_text()
-
-            voices.append(voice)
-
-    return voices
+    """Get the voices from the plomtts server."""
+    client = TTSClient(PLOMTTS_ENDPOINT)
+    voice_list = client.list_voices()
+    return [
+        Voice(
+            name=v.name,
+            generator=FishSpeechGenerator(v.name),
+            category="Fish",
+            avatar=PLOMTTS_ENDPOINT + v.avatar_url if v.avatar_url else "",
+        )
+        for v in voice_list.voices
+    ]
