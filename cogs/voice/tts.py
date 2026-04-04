@@ -275,7 +275,7 @@ class TTS(commands.Cog):
                 title=f"{voice.name} 🗣️",
                 text=quoted_text(text),
                 color=discord.Color.light_gray(),
-                thumbnail=voice.avatar,
+                thumbnail=voice.avatar or None,
                 footer=footer,
                 footer_icon=footer_icon,
             )
