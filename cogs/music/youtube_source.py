@@ -94,19 +94,23 @@ class YouTubeSource:
         # Search youtube
         try:
             results = self.api.search_by_keywords(
-                q=query, search_type=["video"], count=1, limit=1
+                q=query, search_type=["video"], count=5, limit=5
             )
             items = self._safe_get_items(results)
             if not items:
                 return None
 
-            first_item = items[0]
-            if not hasattr(first_item, "id") or not hasattr(first_item.id, "videoId"):
-                return None
-            video_id = first_item.id.videoId
-            if not video_id:
-                return None
-            return await self.id_to_track(video_id, query)
+            for item in items:
+                if not hasattr(item, "id") or not hasattr(item.id, "videoId"):
+                    continue
+                video_id = item.id.videoId
+                if not video_id:
+                    continue
+                track = await self.id_to_track(video_id, query)
+                if track:
+                    return track
+
+            return None
         except Exception as e:
             logging.error(f"Failed to search youtube for '{query}': {e}")
             return None
