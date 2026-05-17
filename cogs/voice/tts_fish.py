@@ -1,5 +1,6 @@
 import pathlib
 from typing import List
+from urllib.parse import quote
 
 from plomtts import TTSClient
 from pydub import AudioSegment
@@ -62,7 +63,9 @@ def get_fish_voices() -> List[Voice]:
             name=v.name,
             generator=FishSpeechGenerator(v.name),
             category="Fish",
-            avatar=PLOMTTS_ENDPOINT + v.avatar_url if v.avatar_url else "",
+            avatar=(
+                PLOMTTS_ENDPOINT + quote(v.avatar_url) if v.avatar_url else ""
+            ),
         )
         for v in voice_list.voices
     ]
