@@ -205,6 +205,13 @@ class TTS(commands.Cog):
         line = "-----------\n"
         text = (
             f"Usage: `{self.bot.prefix}[text]` or `{self.bot.prefix}[voice] [text]`\n\n"
+            f"{bold('Voice effects')} — drop tags in `[brackets]` anywhere in your text to "
+            "control emotion, tone, and prosody (powered by Fish Audio S2):\n"
+            " Emotion: `[laugh]` `[whispers]` `[super happy]` `[sad]` `[angry]` `[crying]` `[sigh]`\n"
+            " Tone: `[whisper in small voice]` `[professional broadcast tone]` `[shouting]`\n"
+            " Prosody: `[pitch up]` `[slow down]` `[speed up]`\n"
+            "Tags are free-form — describe any style you want. Example: "
+            f"`{self.bot.prefix}Oh no... [whispers] they're coming.`\n\n"
         )
         for category in sorted(categories):
             text += f"{bold(category)} voices:\n"
