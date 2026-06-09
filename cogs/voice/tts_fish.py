@@ -3,24 +3,24 @@ from typing import List
 from urllib.parse import quote
 
 from plomtts import TTSClient
-from pydub import AudioSegment
+from pydub import AudioSegment, effects
 
 from cogs.voice.tts_types import TTSGenerator, Voice
 
 PLOMTTS_ENDPOINT = "http://192.168.8.175:8420"
 
-# Fish Audio S2 output is quiet over Discord voice; boost gain on playback.
-# +6 dB ≈ 2x amplitude.
-VOLUME_BOOST_DB = 6
 
+def _boost_file(path: pathlib.Path) -> None:
+    """Normalize an mp3 to peak 0 dBFS in place (Fish Audio S2 output is quiet).
 
-def _boost_file(path: pathlib.Path, db: int = VOLUME_BOOST_DB) -> None:
-    """Boost an mp3's volume in place (Discord playback is quiet)."""
+    The player plays TTS tracks at full volume (see TTS_VOLUME), so normalizing
+    the file to the ceiling makes speech as loud as possible without clipping.
+    """
     try:
         audio = AudioSegment.from_file(str(path))
-        (audio + db).export(str(path), format="mp3")
+        effects.normalize(audio).export(str(path), format="mp3")
     except Exception as e:  # pragma: no cover - best-effort loudness
-        print(f"Warning: volume boost failed: {e}")
+        print(f"Warning: volume normalize failed: {e}")
 
 
 def generate_dialogue_audio(turns: list, path: pathlib.Path) -> None:

@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 
 MAX_TTS_LENGTH = 500
 
+# TTS plays at full volume, independent of the music-tuned player volume (~0.30).
+TTS_VOLUME = 1.0
+
 # The directory where audio files are stored.
 AUDIO_DIRECTORY = pathlib.Path("audio/tts")
 AUDIO_DIRECTORY.mkdir(parents=True, exist_ok=True)
@@ -29,6 +32,18 @@ class TTS(commands.Cog):
         self.bot = bot
         self.voices: list[Voice] = []
         self.enable_message_handler = True  # Flag to control message handling
+        # Maps a reply-embed message id → the original command message, so the 🔄
+        # replay button (added to the bot's reply) can re-run the original request.
+        self.replay_map: dict = {}
+
+    def _remember_replay(self, response, original) -> None:
+        """Record reply-embed → original command so its 🔄 can replay."""
+        if response is None:
+            return
+        self.replay_map[response.id] = original
+        if len(self.replay_map) > 200:  # keep the map bounded
+            for key in list(self.replay_map)[:-200]:
+                del self.replay_map[key]
 
     def log(self, message: str):
         """Log a message to the bot."""
@@ -232,9 +247,12 @@ class TTS(commands.Cog):
         if not self.enable_message_handler:
             return
 
-        # Replay TTS messages if the reaction is a 🔄.
+        # Replay TTS if the reaction is a 🔄. The button lives on the bot's reply
+        # embed, so map it back to the original command; fall back to the reacted
+        # message for older replies that carried the button directly.
         if reaction.emoji == "🔄":
-            await self.handle_message_tts(reaction.message, user)
+            original = self.replay_map.get(reaction.message.id, reaction.message)
+            await self.handle_message_tts(original, user)
 
     async def send_help(self, channel):
         """Send the help message to the channel."""
@@ -334,8 +352,9 @@ class TTS(commands.Cog):
                 footer_icon=footer_icon,
             )
 
-            # Add replay button
-            await self.bot.messaging.add_reactions(message, ["🔄"])
+            # Add replay button to the reply (where the user is looking).
+            await self.bot.messaging.add_reactions(response, ["🔄"])
+            self._remember_replay(response, message)
 
             # Generate and save the audio
             start_time = time.time()
@@ -357,8 +376,8 @@ class TTS(commands.Cog):
                     footer=footer,
                 )
 
-                # Play the audio
-                track = AudioTrack(name=mp3_path.stem, path=mp3_path)
+                # Play the audio (full volume — louder than the music default)
+                track = AudioTrack(name=mp3_path.stem, path=mp3_path, volume=TTS_VOLUME)
                 await self.bot.audio.play(user.voice.channel, track)
 
                 # Update embed to show success
@@ -404,8 +423,9 @@ class TTS(commands.Cog):
                 footer_icon=footer_icon,
             )
 
-            # Add replay button
-            await self.bot.messaging.add_reactions(message, ["🔄"])
+            # Add replay button to the reply (where the user is looking).
+            await self.bot.messaging.add_reactions(response, ["🔄"])
+            self._remember_replay(response, message)
 
             # Generate the dialogue audio
             start_time = time.time()
@@ -425,7 +445,7 @@ class TTS(commands.Cog):
                 await self.bot.messaging.edit_embed(
                     message=response, color=discord.Color.blue(), footer=footer
                 )
-                track = AudioTrack(name=mp3_path.stem, path=mp3_path)
+                track = AudioTrack(name=mp3_path.stem, path=mp3_path, volume=TTS_VOLUME)
                 await self.bot.audio.play(user.voice.channel, track)
                 await self.bot.messaging.edit_embed(
                     message=response, color=discord.Color.green()

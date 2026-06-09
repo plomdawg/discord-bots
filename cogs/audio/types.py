@@ -37,6 +37,9 @@ class AudioTrack:
         self.youtube_url = kwargs.get("youtube_url")
         # Spotify URL for the track
         self.spotify_url = kwargs.get("spotify_url")
+        # Optional per-track volume override (e.g. TTS plays louder than the
+        # music-tuned player default). None → use the player's volume.
+        self.volume_override = kwargs.get("volume")
         # Thumbnail URL for the track
         self.thumbnail = kwargs.get("thumbnail")
         # User who requested the track
@@ -72,7 +75,7 @@ class AudioTrack:
                 before_options=ffmpeg_before_options,
                 options=ffmpeg_options,
             ),
-            volume=volume,
+            volume=self.volume_override if self.volume_override is not None else volume,
         )
 
 
