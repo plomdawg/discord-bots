@@ -9,6 +9,34 @@ from cogs.voice.tts_types import TTSGenerator, Voice
 
 PLOMTTS_ENDPOINT = "http://192.168.8.175:8420"
 
+# Fish Audio S2 output is quiet over Discord voice; boost gain on playback.
+# +6 dB ≈ 2x amplitude.
+VOLUME_BOOST_DB = 6
+
+
+def _boost_file(path: pathlib.Path, db: int = VOLUME_BOOST_DB) -> None:
+    """Boost an mp3's volume in place (Discord playback is quiet)."""
+    try:
+        audio = AudioSegment.from_file(str(path))
+        (audio + db).export(str(path), format="mp3")
+    except Exception as e:  # pragma: no cover - best-effort loudness
+        print(f"Warning: volume boost failed: {e}")
+
+
+def generate_dialogue_audio(turns: list, path: pathlib.Path) -> None:
+    """Generate multi-speaker dialogue audio to a path.
+
+    Args:
+        turns: ordered list of (voice_id, text) tuples.
+        path: output mp3 path.
+    """
+    client = TTSClient(PLOMTTS_ENDPOINT)
+    print(f"Generating dialogue with {len(turns)} turns")
+    audio_bytes = client.generate_dialogue(turns=turns)
+    path.write_bytes(audio_bytes)
+    _boost_file(path)
+    print(f"Saved dialogue audio to {path}")
+
 
 class FishSpeechGenerator(TTSGenerator):
     """Fish-Speech implementation of the TTS generator (via plomtts server)."""
@@ -48,6 +76,9 @@ class FishSpeechGenerator(TTSGenerator):
                 print(f"Mixed audio with backing track to {path}")
             except Exception as e:
                 print(f"Warning: Failed to mix backing track: {e}")
+
+        # Boost loudness for Discord playback.
+        _boost_file(path)
 
     def calculate_cost(self, text: str) -> str:
         """Calculate the cost of generating this TTS message."""

@@ -10,7 +10,7 @@ from discord.ext import commands
 from cogs.audio.types import AudioTrack
 from cogs.common import utils
 from cogs.common.messaging import bold, code, quoted_text
-from cogs.voice.tts_fish import get_fish_voices
+from cogs.voice.tts_fish import generate_dialogue_audio, get_fish_voices
 from cogs.voice.tts_piper import get_piper_voices
 from cogs.voice.tts_types import Voice
 
@@ -138,6 +138,43 @@ class TTS(commands.Cog):
         voice = random.Random(message.id).choice(list(self.voices))
         return voice, content_without_prefix
 
+    def _match_voice_by_name(self, name: str) -> "Voice | None":
+        """Resolve a voice-name string to a Voice (exact, else substring). None if no match."""
+        name_l = name.strip().lower()
+        if len(name_l) < 3:
+            return None
+        for voice in self.voices:  # exact match wins
+            if voice.name.lower() == name_l:
+                return voice
+        for voice in self.voices:  # else first name containing the phrase
+            if name_l in voice.name.lower():
+                return voice
+        return None
+
+    def parse_dialogue(self, content_without_prefix: str) -> "list[tuple[Voice, str]] | None":
+        """Parse a multi-voice dialogue: `Voice: line | Voice: line | ...`.
+
+        Returns a list of (voice, text) turns, or None if the message isn't a valid
+        dialogue (so ordinary single-voice messages — even ones containing `|` — fall
+        through to the normal handler untouched).
+        """
+        if "|" not in content_without_prefix:
+            return None
+
+        turns: "list[tuple[Voice, str]]" = []
+        for segment in content_without_prefix.split("|"):
+            segment = segment.strip()
+            if ":" not in segment:
+                return None  # every segment must be "Voice: text"
+            name, _, line = segment.partition(":")
+            voice = self._match_voice_by_name(name)
+            line = line.strip()
+            if voice is None or not line:
+                return None
+            turns.append((voice, line))
+
+        return turns if len(turns) >= 2 else None
+
     async def play(
         self, voice_channel: discord.VoiceChannel, voice_name: str, text: str
     ) -> None:
@@ -212,6 +249,9 @@ class TTS(commands.Cog):
             " Prosody: `[pitch up]` `[slow down]` `[speed up]`\n"
             "Tags are free-form — describe any style you want. Example: "
             f"`{self.bot.prefix}Oh no... [whispers] they're coming.`\n\n"
+            f"{bold('Multi-voice')} — make voices talk to each other with "
+            "`Voice: line | Voice: line` (up to 5 voices, one natural conversation):\n"
+            f"`{self.bot.prefix}Kratos: Boy! | Sam: [laugh] Hi there | Kratos: bye`\n\n"
         )
         for category in sorted(categories):
             text += f"{bold(category)} voices:\n"
@@ -238,6 +278,13 @@ class TTS(commands.Cog):
 
         # Remove the existing replay button.
         await self.bot.messaging.remove_reactions(message)
+
+        # Multi-voice dialogue?  `;Voice: line | Voice: line`
+        dialogue = self.parse_dialogue(
+            message.content[len(self.bot.prefix) :].strip()
+        )
+        if dialogue:
+            return await self.handle_dialogue_tts(message, user, dialogue)
 
         # Extract and validate the text
         text = message.content[len(self.bot.prefix) :].strip()
@@ -324,6 +371,70 @@ class TTS(commands.Cog):
         except Exception as e:
             error = f"An unexpected error occurred: {str(e)}"
             return await self.fail(message, error)
+
+    async def handle_dialogue_tts(self, message, user, turns):
+        """Generate and play a multi-voice dialogue (list of (Voice, text) turns)."""
+        total_len = sum(len(line) for _, line in turns)
+        if total_len > MAX_TTS_LENGTH:
+            return await self.fail(
+                message,
+                f"Dialogue too long, please keep it under {MAX_TTS_LENGTH} characters.",
+            )
+
+        try:
+            mp3_path = AUDIO_DIRECTORY / f"{message.id}.mp3"
+
+            # Embed body: one line per turn; title lists the distinct speakers.
+            body = "\n".join(f"{bold(voice.name)}: {line}" for voice, line in turns)
+            speakers = ", ".join(dict.fromkeys(voice.name for voice, _ in turns))
+
+            footer_parts = [f"🗨️ {message.author.name}"]
+            if user != message.author or mp3_path.exists():
+                footer_parts.append(f"🔁 {user.name}")
+            footer_parts.append("💰 $0")
+            footer = " ".join(footer_parts)
+            footer_icon = "https://media.tenor.com/-n8JvVIqBXkAAAAM/dddd.gif"
+
+            response = await self.bot.messaging.send_embed(
+                channel=message.channel,
+                title=f"🗣️ Dialogue — {speakers}",
+                text=body,
+                color=discord.Color.light_gray(),
+                footer=footer,
+                footer_icon=footer_icon,
+            )
+
+            # Add replay button
+            await self.bot.messaging.add_reactions(message, ["🔄"])
+
+            # Generate the dialogue audio
+            start_time = time.time()
+            try:
+                if not mp3_path.exists():
+                    self.log(f"[dialogue] Generating {len(turns)} turns: {mp3_path}")
+                    generate_dialogue_audio(
+                        [(voice.name, line) for voice, line in turns], mp3_path
+                    )
+            except Exception as e:
+                return await self.fail(message, str(e))
+
+            duration = time.time() - start_time
+            self.log(f"Generated dialogue in {duration:.2f} seconds")
+            footer += f" ⌚ {duration:.2f} seconds"
+            try:
+                await self.bot.messaging.edit_embed(
+                    message=response, color=discord.Color.blue(), footer=footer
+                )
+                track = AudioTrack(name=mp3_path.stem, path=mp3_path)
+                await self.bot.audio.play(user.voice.channel, track)
+                await self.bot.messaging.edit_embed(
+                    message=response, color=discord.Color.green()
+                )
+            except Exception as e:
+                return await self.fail(message, str(e))
+
+        except Exception as e:
+            return await self.fail(message, f"An unexpected error occurred: {str(e)}")
 
     async def fail(self, message: discord.Message, error: str):
         """Send a failure message to the user."""
