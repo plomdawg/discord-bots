@@ -27,6 +27,26 @@ AUDIO_DIRECTORY = pathlib.Path("audio/tts")
 AUDIO_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 
+class ReplayView(discord.ui.View):
+    """A real Discord button attached to a TTS reply, to replay it.
+
+    Used instead of a 🔄 reaction (reactions weren't reliably showing in the
+    client). Re-runs the original command when clicked.
+    """
+
+    def __init__(self, cog: "TTS", original_message: discord.Message):
+        super().__init__(timeout=3600)
+        self.cog = cog
+        self.original_message = original_message
+
+    @discord.ui.button(emoji="🔄", label="Replay", style=discord.ButtonStyle.secondary)
+    async def replay(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        await interaction.response.defer()
+        await self.cog.handle_message_tts(self.original_message, interaction.user)
+
+
 class TTS(commands.Cog):
     def __init__(self, bot: "VoiceBot"):
         self.bot = bot
@@ -365,13 +385,12 @@ class TTS(commands.Cog):
                 footer_icon=footer_icon,
             )
 
-            # Add replay button to the reply (where the user is looking).
+            # Attach a real Replay button to the reply (reactions weren't showing).
             try:
-                await self.bot.messaging.add_reactions(response, ["🔄"])
-                self._remember_replay(response, message)
-                self.log(f"[replay] added 🔄 to reply {response.id}")
+                await response.edit(view=ReplayView(self, message))
+                self.log(f"[replay] attached button to reply {response.id}")
             except Exception as e:
-                self.log(f"[replay] FAILED to add 🔄: {type(e).__name__}: {e}")
+                self.log(f"[replay] FAILED to attach button: {type(e).__name__}: {e}")
 
             # Generate and save the audio
             start_time = time.time()
@@ -440,13 +459,12 @@ class TTS(commands.Cog):
                 footer_icon=footer_icon,
             )
 
-            # Add replay button to the reply (where the user is looking).
+            # Attach a real Replay button to the reply (reactions weren't showing).
             try:
-                await self.bot.messaging.add_reactions(response, ["🔄"])
-                self._remember_replay(response, message)
-                self.log(f"[replay] added 🔄 to reply {response.id}")
+                await response.edit(view=ReplayView(self, message))
+                self.log(f"[replay] attached button to reply {response.id}")
             except Exception as e:
-                self.log(f"[replay] FAILED to add 🔄: {type(e).__name__}: {e}")
+                self.log(f"[replay] FAILED to attach button: {type(e).__name__}: {e}")
 
             # Generate the dialogue audio
             start_time = time.time()
