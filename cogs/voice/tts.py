@@ -166,29 +166,42 @@ class TTS(commands.Cog):
                 return voice
         return None
 
-    def parse_dialogue(self, content_without_prefix: str) -> "list[tuple[Voice, str]] | None":
+    def parse_dialogue(
+        self, content_without_prefix: str, seed=0
+    ) -> "list[tuple[Voice, str]] | None":
         """Parse a multi-voice dialogue: `Voice: line | Voice: line | ...`.
 
-        Returns a list of (voice, text) turns, or None if the message isn't a valid
-        dialogue (so ordinary single-voice messages — even ones containing `|` — fall
-        through to the normal handler untouched).
+        A segment without a recognized `Voice:` prefix gets a random voice (like the
+        single-voice path), so `Kratos: Boy! | [laugh] hi | Kratos: bye` works. To avoid
+        hijacking ordinary messages that merely contain `|`, at least one segment must be
+        explicitly named, and there must be ≥2 turns; otherwise returns None.
         """
         if "|" not in content_without_prefix:
             return None
 
         turns: "list[tuple[Voice, str]]" = []
-        for segment in content_without_prefix.split("|"):
+        any_named = False
+        for i, segment in enumerate(content_without_prefix.split("|")):
             segment = segment.strip()
-            if ":" not in segment:
-                return None  # every segment must be "Voice: text"
-            name, _, line = segment.partition(":")
-            voice = self._match_voice_by_name(name)
-            line = line.strip()
-            if voice is None or not line:
-                return None
+            if not segment:
+                continue
+            voice = None
+            line = segment
+            if ":" in segment:
+                name, _, rest = segment.partition(":")
+                matched = self._match_voice_by_name(name)
+                if matched is not None:
+                    voice, line, any_named = matched, rest.strip(), True
+            if not line:
+                continue
+            if voice is None:
+                # No (recognized) name → random voice, deterministic per turn for replay.
+                voice = random.Random(f"{seed}-{i}").choice(list(self.voices))
             turns.append((voice, line))
 
-        return turns if len(turns) >= 2 else None
+        if not any_named or len(turns) < 2:
+            return None
+        return turns
 
     async def play(
         self, voice_channel: discord.VoiceChannel, voice_name: str, text: str
@@ -297,9 +310,9 @@ class TTS(commands.Cog):
         # Remove the existing replay button.
         await self.bot.messaging.remove_reactions(message)
 
-        # Multi-voice dialogue?  `;Voice: line | Voice: line`
+        # Multi-voice dialogue?  `;Voice: line | Voice: line` (unnamed turn → random voice)
         dialogue = self.parse_dialogue(
-            message.content[len(self.bot.prefix) :].strip()
+            message.content[len(self.bot.prefix) :].strip(), seed=message.id
         )
         if dialogue:
             return await self.handle_dialogue_tts(message, user, dialogue)
@@ -353,8 +366,12 @@ class TTS(commands.Cog):
             )
 
             # Add replay button to the reply (where the user is looking).
-            await self.bot.messaging.add_reactions(response, ["🔄"])
-            self._remember_replay(response, message)
+            try:
+                await self.bot.messaging.add_reactions(response, ["🔄"])
+                self._remember_replay(response, message)
+                self.log(f"[replay] added 🔄 to reply {response.id}")
+            except Exception as e:
+                self.log(f"[replay] FAILED to add 🔄: {type(e).__name__}: {e}")
 
             # Generate and save the audio
             start_time = time.time()
@@ -424,8 +441,12 @@ class TTS(commands.Cog):
             )
 
             # Add replay button to the reply (where the user is looking).
-            await self.bot.messaging.add_reactions(response, ["🔄"])
-            self._remember_replay(response, message)
+            try:
+                await self.bot.messaging.add_reactions(response, ["🔄"])
+                self._remember_replay(response, message)
+                self.log(f"[replay] added 🔄 to reply {response.id}")
+            except Exception as e:
+                self.log(f"[replay] FAILED to add 🔄: {type(e).__name__}: {e}")
 
             # Generate the dialogue audio
             start_time = time.time()
