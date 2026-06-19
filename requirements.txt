@@ -47,13 +47,15 @@ lyricsgenius
 pre-commit
 isort
 yamllint
-
+black
+mypy
+pylint
 
 # Fish TTS dependencies (via plomtts server)
 plomtts-client @ git+https://github.com/plomdawg/plomtts.git#subdirectory=client
 
-fastapi==0.104.1
-uvicorn==0.24.0
-python-multipart==0.0.6
-jinja2==3.1.2
-pydantic==2.4.2
+fastapi
+uvicorn
+python-multipart
+jinja2
+pydantic
