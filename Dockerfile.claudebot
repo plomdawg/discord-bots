@@ -7,10 +7,12 @@ FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-# Build tools + ffmpeg/portaudio (needed to import the shared cog modules), git, and a
-# docker CLI (talks to the mounted /var/run/docker.sock — no daemon runs in here).
+# Build tools + ffmpeg/portaudio (needed to import the shared cog modules), git, a
+# docker CLI (talks to the mounted /var/run/docker.sock — no daemon runs in here), and
+# ssh/rsync so it can deploy to remote hosts (e.g. `make deploy-hass` → rsync+ssh to hass).
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential ffmpeg portaudio19-dev git curl ca-certificates docker.io \
+        openssh-client rsync \
     && rm -rf /var/lib/apt/lists/*
 
 # Node 24 + the Claude Code CLI (provides the `claude` binary on PATH).
