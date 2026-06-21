@@ -25,17 +25,33 @@ A collection of Discord bots with shared functionality, built using discord.py. 
   - User avatar remixing with custom prompts
 - Message-based TTS with voice selection
 
+### Claudebot
+- Talk to Claude Code from Discord. Mention the bot (`@claude plex is broken!`) and it
+  shells out to the headless Claude Code CLI (`claude -p`) running in the homelab repo —
+  same CLAUDE.md, skills, Home Assistant MCP server, and full agentic access as an
+  interactive session.
+- **Responds only to a single user** (`PLOMDAWG_USER_ID`); ignores everyone else.
+- A top-level mention spins up a **thread**; follow-ups inside that thread continue the
+  same Claude session (resumed by id) without needing to re-mention.
+- Live status updates as tools run, then the final answer (auto-chunked at Discord's
+  2000-char limit).
+- Runs in its own image (`Dockerfile.claudebot`: shared deps + Node + the `claude` CLI +
+  docker CLI) and mounts the repo, the host `~/.claude` creds/MCP config, and the docker
+  socket — see the monorepo `docker-compose.yml`. This is deliberately privileged.
+
 ## Project Structure
 
 ```
 discord-bots/
 ├── bot.py           # Base DiscordBot class
 ├── bots/            # Individual bot implementations
+│   ├── claudebot.py # Talk-to-Claude-Code bot
 │   ├── dotabot.py   # DotA 2 bot
 │   ├── musicbot.py  # Music playing bot
 │   ├── testbot.py   # Test bot
 │   └── voicebot.py  # AI TTS bot
 └── cogs/            # Bot functionality modules
+    ├── claude/      # Claudebot: CLI runner, session store, formatting
     ├── common/      # Shared functionality
     └── dota/        # Dota-specific commands
 ```

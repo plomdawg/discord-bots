@@ -1,0 +1,32 @@
+# Image for claudebot — the shared bot deps (so `bot.py` imports) PLUS the Node-based
+# Claude Code CLI, the docker CLI, and git, so the bot can shell out to `claude -p` and
+# act on the homelab host (read/write files, run containers) as if it were the operator.
+#
+# Kept separate from the other bots' Dockerfile so their image stays lean.
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+# Build tools + ffmpeg/portaudio (needed to import the shared cog modules), git, and a
+# docker CLI (talks to the mounted /var/run/docker.sock — no daemon runs in here).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential ffmpeg portaudio19-dev git curl ca-certificates docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node 24 + the Claude Code CLI (provides the `claude` binary on PATH).
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && npm install -g @anthropic-ai/claude-code \
+    && npm cache clean --force \
+    && rm -rf /var/lib/apt/lists/*
+
+# Run as uid/gid 1000 (matches host `avalon`, who owns the mounted ~/.claude creds).
+# A real home dir must exist and be writable: `claude` refuses --dangerously-skip-permissions
+# as root, and writes lock/cache files under $HOME alongside the mounted ~/.claude.
+RUN useradd --uid 1000 --create-home --shell /bin/bash avalon
+
+RUN pip install --upgrade pip
+COPY requirements.txt ./
+RUN pip install -U -r requirements.txt
+
+ENV PYTHONPATH=/app
