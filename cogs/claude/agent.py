@@ -68,20 +68,13 @@ class ClaudeAgent(commands.Cog):
         if self.bot.user and message.author.id == self.bot.user.id:
             return
 
-        is_thread = isinstance(message.channel, discord.Thread)
-        mentioned = bool(self.bot.user and self.bot.user in message.mentions)
-        tracked = is_thread and self.sessions.has(message.channel.id)
-        # Diagnostic: log every message we can see (empty content => Message Content
-        # intent isn't delivering text).
-        self.log(
-            f"saw msg author={message.author.id} is_me={message.author.id == self.plomdawg_id} "
-            f"thread={is_thread} mentioned={mentioned} tracked={tracked} "
-            f"content={message.content!r}"
-        )
-
         # Only ever respond to plomdawg; ignore everyone else.
         if message.author.id != self.plomdawg_id:
             return
+
+        is_thread = isinstance(message.channel, discord.Thread)
+        mentioned = bool(self.bot.user and self.bot.user in message.mentions)
+        tracked = is_thread and self.sessions.has(message.channel.id)
         # Inside a thread we own, follow-ups need no re-mention.
         if not (mentioned or tracked):
             return
