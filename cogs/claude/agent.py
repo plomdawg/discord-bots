@@ -7,6 +7,7 @@ continue the same Claude session (resumed by id). Only plomdawg is listened to.
 """
 
 import asyncio
+import os
 import time
 from typing import TYPE_CHECKING
 
@@ -24,6 +25,9 @@ if TYPE_CHECKING:
 STATUS_EDIT_INTERVAL = 1.5
 # Cap concurrent Claude runs across all threads (each run is a full agent process).
 MAX_CONCURRENT_RUNS = 3
+# Where attached images are saved so the in-container `claude` can Read them.
+ATTACHMENT_DIR = "/tmp/claudebot-attachments"
+IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp")
 
 
 class ClaudeAgent(commands.Cog):
@@ -48,6 +52,25 @@ class ClaudeAgent(commands.Cog):
     def _thread_name(prompt: str) -> str:
         first_line = prompt.strip().splitlines()[0] if prompt.strip() else "Claude"
         return (first_line[:90] or "Claude").strip()
+
+    async def _save_images(self, message: discord.Message) -> list[str]:
+        """Download image attachments to a local path the in-container CLI can Read."""
+        paths: list[str] = []
+        for att in message.attachments:
+            ct = att.content_type or ""
+            is_image = ct.startswith("image/") or att.filename.lower().endswith(IMAGE_EXTS)
+            if not is_image:
+                continue
+            os.makedirs(ATTACHMENT_DIR, exist_ok=True)
+            raw = f"{message.id}_{att.id}_{att.filename}"
+            safe = "".join(c for c in raw if c.isalnum() or c in "._-") or f"{att.id}.img"
+            path = os.path.join(ATTACHMENT_DIR, safe)
+            try:
+                await att.save(path)
+                paths.append(path)
+            except (discord.HTTPException, OSError) as e:
+                self.log(f"failed to save attachment {att.filename}: {e}")
+        return paths
 
     async def _react(self, message: discord.Message, emoji: str):
         try:
@@ -79,17 +102,28 @@ class ClaudeAgent(commands.Cog):
         if not (mentioned or tracked):
             return
 
-        prompt = self._strip_mentions(message)
-        if not prompt:
+        user_text = self._strip_mentions(message)
+        image_paths = await self._save_images(message)
+        if not user_text and not image_paths:
             await self._react(message, "❓")
             return
+
+        # Tell Claude where to find any attached images (its Read tool renders them).
+        prompt = user_text
+        if image_paths:
+            listing = "\n".join(f"- {p}" for p in image_paths)
+            prompt = (
+                f"{user_text}\n\n[The user attached {len(image_paths)} image(s). "
+                f"Read them from these local paths to see them:\n{listing}]"
+            ).strip()
 
         await self._react(message, "👀")
         try:
             if is_thread:
                 thread = message.channel
             else:
-                thread = await message.create_thread(name=self._thread_name(prompt))
+                name = self._thread_name(user_text or "Screenshot")
+                thread = await message.create_thread(name=name)
         except discord.HTTPException as e:
             self.log(f"Failed to create/resolve thread: {type(e).__name__}: {e}")
             await self._swap_reaction(message, "👀", "❌")

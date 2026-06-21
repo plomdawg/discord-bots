@@ -35,6 +35,9 @@ A collection of Discord bots with shared functionality, built using discord.py. 
   same Claude session (resumed by id) without needing to re-mention.
 - Live status updates as tools run, then the final answer (auto-chunked at Discord's
   2000-char limit).
+- **Image attachments** are supported: attach a screenshot (with or without text) and the
+  bot downloads it and points Claude's `Read` tool at it — e.g. send a Home Assistant
+  dashboard screenshot and ask it to work on it.
 - Runs in its own image (`Dockerfile.claudebot`: shared deps + Node + the `claude` CLI +
   docker CLI) and mounts the repo, the host `~/.claude` creds/MCP config, and the docker
   socket — see the monorepo `docker-compose.yml`. This is deliberately privileged.
