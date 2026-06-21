@@ -97,9 +97,9 @@ class ClaudeAgent(commands.Cog):
 
         is_thread = isinstance(message.channel, discord.Thread)
         mentioned = bool(self.bot.user and self.bot.user in message.mentions)
-        tracked = is_thread and self.sessions.has(message.channel.id)
-        # Inside a thread we own, follow-ups need no re-mention.
-        if not (mentioned or tracked):
+        # Only respond to an explicit @mention — even inside a thread we own.
+        # (An in-thread mention still resumes that thread's session in _run.)
+        if not mentioned:
             return
 
         user_text = self._strip_mentions(message)
