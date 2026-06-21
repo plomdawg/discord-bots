@@ -21,14 +21,18 @@ colorama.init()
 
 
 class DiscordBot(commands.Bot):
-    def __init__(self, name: str):
+    def __init__(self, name: str, intents: discord.Intents | None = None):
         """
         Initialize the bot.
 
         Args:
             name (str): The name of the bot.
+            intents (discord.Intents | None): Gateway intents to request. Defaults to
+                Intents.all() (requires all privileged intents enabled in the portal).
+                Bots that only need a subset can pass a narrower set.
         """
-        intents = discord.Intents.all()
+        if intents is None:
+            intents = discord.Intents.all()
         super().__init__(command_prefix="/", case_insensitive=True, intents=intents)
         self.name = name
         # Add type hints for cogs
