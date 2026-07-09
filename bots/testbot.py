@@ -10,7 +10,7 @@ import discord
 
 from bot import DiscordBot
 from cogs.common import utils
-from cogs.gemini import Gemini
+from cogs.forge import Forge
 from cogs.test import Test
 
 TEST_CHANNEL = discord.Object(id=408481491597787136)
@@ -24,8 +24,8 @@ class TestBot(DiscordBot):
         # Load the test cog.
         await self.load_cog("test", "Test")
         self.test = typing.cast(Test, self.get_cog("Test"))
-        await self.load_cog("gemini", "Gemini")
-        self.gemini = typing.cast(Gemini, self.get_cog("Gemini"))
+        await self.load_cog("forge", "Forge")
+        self.forge = typing.cast(Forge, self.get_cog("Forge"))
         await super().start()
 
     async def setup_hook(self):
@@ -39,8 +39,8 @@ class TestBot(DiscordBot):
         await self.set_activity(f"Watching {len(self.guilds)} servers! 😀")
         await super().on_ready()
 
-        # Test the gemini cog.
-        self.gemini.generate_image(
+        # Test the forge cog.
+        self.forge.generate_image(
             prompt="A beautiful sunset over a calm ocean",
             path=pathlib.Path("sunset.png"),
         )

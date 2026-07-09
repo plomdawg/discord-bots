@@ -17,9 +17,6 @@ piper-tts
 # ElevenLabs TTS API
 elevenlabs
 
-# Gemini API
-google-genai
-
 
 # PIL
 pillow

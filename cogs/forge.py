@@ -36,13 +36,13 @@ if TYPE_CHECKING:
     from bot import DiscordBot
 
 
-class Gemini(commands.Cog):
+class Forge(commands.Cog):
     def __init__(self, bot: "DiscordBot"):
         self.bot = bot
 
     def log(self, message: str):
         """Log a message to the bot."""
-        self.bot.log(f"[Gemini] {message}")
+        self.bot.log(f"[Forge] {message}")
 
     def format_api_error(self, e: Exception) -> str:
         """Format a Forge/HTTP error into a readable one-liner."""
@@ -316,4 +316,4 @@ class Gemini(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(Gemini(bot))
+    await bot.add_cog(Forge(bot))
