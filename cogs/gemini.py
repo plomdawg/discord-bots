@@ -1,26 +1,35 @@
 """
-This cog provides Gemini AI API functionality.
+This cog provides local AI image generation via the homelab Forge server.
+
+Images are generated on the RTX 3090 by Stable Diffusion WebUI Forge
+(services/forge in the homelab repo), reached over its A1111-compatible REST API.
+This replaced the Gemini image API, whose free-tier model was deprecated and whose
+replacement (gemini-2.5-flash-image) is paid-only.
 """
 
+import base64
 import glob
 import math
 import os
 import pathlib
-from io import BytesIO
 from typing import TYPE_CHECKING, Optional
 
 import discord
 import requests
 from discord import app_commands
 from discord.ext import commands
-from google import genai
-from google.genai import types
 from PIL import Image
 
 from cogs.common.messaging import code_block
 
 IMAGE_DIRECTORY = pathlib.Path("images")
 IMAGE_DIRECTORY.mkdir(parents=True, exist_ok=True)
+
+# Forge (Stable Diffusion WebUI Forge) on homelab — A1111-compatible REST API.
+# Same host-IP convention as PLOMTTS_ENDPOINT in cogs/voice/tts_fish.py.
+FORGE_ENDPOINT = "http://192.168.8.175:7860"
+# Default checkpoint (see services/forge/data/models/Stable-diffusion/).
+DEFAULT_MODEL = "Juggernaut-XL-v9"
 
 
 if TYPE_CHECKING:
@@ -30,111 +39,87 @@ if TYPE_CHECKING:
 class Gemini(commands.Cog):
     def __init__(self, bot: "DiscordBot"):
         self.bot = bot
-        self.client = genai.Client(api_key=self.bot.secrets.get("GEMINI_API_KEY"))
 
     def log(self, message: str):
         """Log a message to the bot."""
         self.bot.log(f"[Gemini] {message}")
 
     def format_api_error(self, e: Exception) -> str:
-        """Format a Gemini API error into a readable one-liner."""
-        import re
-        error_str = str(e)
-        try:
-            status_match = re.match(r"^(\d+\s+\w+)", error_str)
-            status = status_match.group(1) if status_match else None
-            brace_idx = error_str.find("{")
-            if brace_idx != -1:
-                import ast
-                error_dict = ast.literal_eval(error_str[brace_idx:])
-                message = error_dict.get("error", {}).get("message", "")
-                # First sentence only, drop docs/rate-limit URLs
-                first_line = re.split(r"\. (For more|To monitor)", message)[0]
-                if status:
-                    return f"{status}: {first_line}"
-                return first_line
-        except Exception:
-            pass
-        return error_str
+        """Format a Forge/HTTP error into a readable one-liner."""
+        if isinstance(e, requests.HTTPError) and e.response is not None:
+            detail = ""
+            try:
+                body = e.response.json()
+                detail = body.get("detail") or body.get("error") or ""
+            except Exception:
+                detail = (e.response.text or "").strip()
+            detail = f": {detail}" if detail else ""
+            return f"{e.response.status_code} {e.response.reason}{detail}"[:400]
+        if isinstance(e, requests.ConnectionError):
+            return "could not reach the Forge image server (is services/forge up?)"
+        if isinstance(e, requests.Timeout):
+            return "image generation timed out"
+        return str(e)
 
     def generate_image(
-        self, prompt: str, path: pathlib.Path, image: Optional[types.Part] = None
+        self,
+        prompt: str,
+        path: pathlib.Path,
+        image: Optional[bytes] = None,
+        model: Optional[str] = None,
     ):
-        """Generate an image using Gemini API to a path."""
-        try:
-            self.log(f"Generating image to {path}")
-            parts = [types.Part(text=prompt)]
-            if image is not None:
-                parts.append(image)
+        """Generate an image via Forge and write it to path.
 
-            response = self.client.models.generate_content(
-                model="gemini-2.5-flash-image",
-                contents=[types.Content(parts=parts)],
-                config=types.GenerateContentConfig(
-                    response_modalities=["TEXT", "IMAGE"]
-                ),
-            )
-            if not response.candidates:
-                self.log("Error: No candidates in response")
-                raise ValueError("No candidates in response")
+        Text-to-image when ``image`` is None; image-to-image (guided by the given
+        raw image bytes, e.g. a Discord avatar) when it is provided.
+        """
+        model = model or DEFAULT_MODEL
+        payload = {
+            "prompt": prompt,
+            "steps": 25,
+            "width": 1024,
+            "height": 1024,
+            "cfg_scale": 6.0,
+            "sampler_name": "DPM++ 2M",
+            "override_settings": {"sd_model_checkpoint": model},
+            "override_settings_restore_afterwards": False,
+        }
 
-            if not response.candidates[0].content:
-                self.log("Error: No content in first candidate")
-                raise ValueError("No content in first candidate")
+        if image is not None:
+            # img2img: seed the generation with the reference image (avatar remixes).
+            payload["init_images"] = [base64.b64encode(image).decode("ascii")]
+            payload["denoising_strength"] = 0.6
+            endpoint = "/sdapi/v1/img2img"
+        else:
+            endpoint = "/sdapi/v1/txt2img"
 
-            if not response.candidates[0].content.parts:
-                self.log("Error: No parts in content")
-                raise ValueError("No parts in content")
+        self.log(f"Generating image via Forge ({model}) -> {path}")
+        response = requests.post(FORGE_ENDPOINT + endpoint, json=payload, timeout=300)
+        response.raise_for_status()
 
-            if response.candidates[0].content.parts[0].text:
-                self.log(f"Text: {response.candidates[0].content.parts[0].text}")
+        images = response.json().get("images") or []
+        if not images:
+            raise ValueError("No image data in Forge response")
 
-            for part in response.candidates[0].content.parts:
-                if (
-                    hasattr(part, "inline_data")
-                    and part.inline_data
-                    and part.inline_data.data
-                ):
-                    # The data should be base64 encoded
-                    import base64
-
-                    try:
-                        # Try to decode base64 data
-                        image_data = base64.b64decode(part.inline_data.data)
-                        # Save the decoded data
-                        with open(path, "wb") as f:
-                            f.write(image_data)
-                        return
-                    except Exception as e:
-                        self.log(f"Error decoding image data: {e}")
-                        # If base64 decoding fails, try saving raw data
-                        with open(path, "wb") as f:
-                            f.write(part.inline_data.data)
-                        return
-
-            self.log("Error: No image data found in response parts")
-            raise ValueError("No image data found in response parts")
-
-        except Exception as e:
-            self.log(f"{e.__class__.__name__}: {e.__str__()}")
-            raise
+        with open(path, "wb") as f:
+            f.write(base64.b64decode(images[0]))
 
     # Add the /image command
     @app_commands.command(
-        name="image", description="Generate an image using Gemini API."
+        name="image", description="Generate an image with local AI."
     )
     @app_commands.describe(prompt="The prompt to generate an image from.")
     async def image(self, interaction: discord.Interaction, prompt: str):
-        """Generate an image using Gemini API."""
+        """Generate an image with local AI."""
         await self.handle_image_generation(interaction, prompt=prompt)
 
     # Add the /low-poly command
     @app_commands.command(
-        name="lowpoly", description="Generate a low-poly image using Gemini API."
+        name="lowpoly", description="Generate a low-poly image with local AI."
     )
     @app_commands.describe(prompt="The prompt to generate a low-poly image from.")
     async def lowpoly(self, interaction: discord.Interaction, prompt: str):
-        """Generate a low-poly image using Gemini API."""
+        """Generate a low-poly image with local AI."""
         prompt = f"A simple low-poly digital illustration of {prompt} with a simple light colored background"
         await self.handle_image_generation(interaction, prompt=prompt)
 
@@ -147,9 +132,7 @@ class Gemini(commands.Cog):
     ):
         """Handle the image generation process."""
         # Reply to the interaction.
-        text = (
-            display_text or f"Generating image using Gemini AI: \n{code_block(prompt)}"
-        )
+        text = display_text or f"Generating image: \n{code_block(prompt)}"
         await self.bot.messaging.send_embed(
             interaction,
             text=text,
@@ -180,16 +163,15 @@ class Gemini(commands.Cog):
 
     # Add the /chad command
     @app_commands.command(
-        name="chad", description="Generate a chad image using Gemini API."
+        name="chad", description="Generate a chad image with local AI."
     )
     @app_commands.describe(user="The user to generate a chad image of.")
     async def chad(self, interaction: discord.Interaction, user: discord.Member):
-        """Generate a chad image using Gemini API."""
+        """Generate a chad image with local AI."""
         self.log(
             f"Generating chad image of {user.display_name}: {user.display_avatar.url}"
         )
         image_bytes = requests.get(user.display_avatar.url).content
-        image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
 
         # Create a prompt that incorporates the avatar and asks for a chad style image
         prompt = "Generate a image in the same artstyle of this avatar as a gigachad. Personify the avatar with a more muscular body. Use details from the avatar to make the body match the avatar. The outfit and accessories should be similar to the avatar, but designed to show off the muscles. IMPORTANT: Maintain the exact same gender as shown in the avatar - if the avatar appears feminine, keep it feminine; if masculine, keep it masculine. Do not alter or change the gender presentation of the face in any way."
@@ -197,47 +179,45 @@ class Gemini(commands.Cog):
         await self.handle_image_generation(
             interaction=interaction,
             prompt=prompt,
-            image=image,
+            image=image_bytes,
             display_text=f"Generating chad image of {user.display_name}...",
         )
 
     # Add the /troll command
     @app_commands.command(
-        name="troll", description="Generate a troll image using Gemini API."
+        name="troll", description="Generate a troll image with local AI."
     )
     @app_commands.describe(user="The user to generate a troll image of.")
     async def troll(self, interaction: discord.Interaction, user: discord.Member):
-        """Generate a troll image using Gemini API."""
+        """Generate a troll image with local AI."""
         image_bytes = requests.get(user.display_avatar.url).content
-        image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
 
         await self.handle_image_generation(
             interaction=interaction,
             prompt="This character as a stupid troll",
-            image=image,
+            image=image_bytes,
             display_text=f"Generating {user.display_name} as a troll...",
         )
 
     # Add the /remix command
     @app_commands.command(
-        name="remix", description="Generate a remix image using Gemini API."
+        name="remix", description="Generate a remix image with local AI."
     )
     @app_commands.describe(user="The user to generate a remix image of.")
     @app_commands.describe(prompt="The prompt to generate a remix image of.")
     async def remix(
         self, interaction: discord.Interaction, user: discord.Member, prompt: str
     ):
-        """Generate a remix of a discord user's avatar using Gemini API."""
+        """Generate a remix of a discord user's avatar with local AI."""
         self.log(
             f"Generating remix image of {user.display_name}: {user.display_avatar.url} with prompt: {prompt}"
         )
         image_bytes = requests.get(user.display_avatar.url).content
-        image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
 
         await self.handle_image_generation(
             interaction=interaction,
             prompt=prompt,
-            image=image,
+            image=image_bytes,
         )
 
     # Add the /last command
