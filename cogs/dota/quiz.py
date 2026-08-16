@@ -131,12 +131,6 @@ class Quiz:
                         "panorama/images/hud/facets/innate_icon_large_png.png"
                     )
                 )
-            elif self.current_word.category == "Facet Abilities":
-                embed.set_thumbnail(
-                    url=utils.dotabase_url(
-                        "/panorama/images/spellicons/attribute_bonus_png.png"
-                    )
-                )
             elif self.current_word.category == "Items":
                 embed.set_thumbnail(url=SHOPKEEPER_IMAGE)
 
@@ -443,8 +437,6 @@ class ShopkeeperQuiz(commands.Cog):
         ability_words = []
         for ability in abilities:
             category = "Abilities"
-            if ability.facet_id:
-                category = "Facet Abilities"
             if ability.innate:
                 category = "Innate Abilities"
 
@@ -467,28 +459,6 @@ class ShopkeeperQuiz(commands.Cog):
             )
         self.log(f"Loaded {len(ability_words)} words from {len(abilities)} abilities.")
 
-        # Add the facets.
-        facet_words = []
-        facets = utils.get_facets()
-        for facet in facets:
-            emoji = self.bot.icons.get(facet.hero.localized_name)
-
-            # Skip facets with no text in their name.
-            if facet.localized_name.strip() == "":
-                continue
-
-            facet_words.append(
-                Word(
-                    text=facet.localized_name,
-                    category="Facets",
-                    hint=f"Hero: {facet.hero.localized_name}",
-                    image=utils.dotabase_url(facet.icon),
-                    url=utils.dota_wiki_url(facet.localized_name),
-                    emoji=emoji,
-                )
-            )
-        self.log(f"Loaded {len(facet_words)} words from {len(facets)} facets.")
-
         # Add the items.
         item_words = []
         items = utils.get_items()
@@ -506,7 +476,6 @@ class ShopkeeperQuiz(commands.Cog):
         self.log(f"Loaded {len(item_words)} words from {len(items)} items.")
 
         # Add the words to the list.
-        self.words.extend(facet_words)
         self.words.extend(hero_words)
         self.words.extend(ability_words)
         self.words.extend(item_words)

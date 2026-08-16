@@ -22,7 +22,9 @@ elevenlabs
 pillow
 
 # Dota 2 database
-dotabase
+# Pinned so the quiz's game data version is explicit: 7.8.12 carries patch 7.41
+# data (facets removed, nine new items). Bump deliberately after a game patch.
+dotabase==7.8.12
 sqlalchemy_utils
 
 # OpenDota API

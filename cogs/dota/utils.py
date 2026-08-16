@@ -4,7 +4,7 @@ import pathlib
 from typing import List, Optional, Tuple
 
 import discord
-from dotabase import Ability, Facet, Hero, Item, Response, Voice, dotabase_session
+from dotabase import Ability, Hero, Item, Response, Voice, dotabase_session
 
 db = dotabase_session()
 """
@@ -49,13 +49,6 @@ def get_heroes() -> List[Hero]:
 def get_hero_by_name(name: str) -> Optional[Hero]:
     """Get a hero by name."""
     return db.query(Hero).filter(Hero.localized_name == name).first()
-
-
-def get_facets() -> List[Facet]:
-    """Get all facets from dotabase. Exclude facets with no name."""
-    return [
-        facet for facet in db.query(Facet).all() if facet.localized_name is not None
-    ]
 
 
 def get_abilities() -> List[Ability]:
@@ -213,21 +206,18 @@ def get_voice(voice_id: int) -> Voice:
 
 if __name__ == "__main__":
     ability = db.query(Ability).filter(Ability.localized_name == "Arcane Bolt").first()
-    print(f"ability.facet_id: {ability.facet_id}")
     print(f"ability.innate: {ability.innate}")
 
     name = "Special Reserve"
     ability = db.query(Ability).filter(Ability.localized_name == name).first()
     print(f"[{name}] {ability}")
-    print(f"[{name}] ability.facet_id: {ability.facet_id}")
     print(f"[{name}] ability.innate: {ability.innate}")
-    print(f"[{name}] ability.facet: {ability.facet}")
     print(f"[{name}] ability.hero: {ability.hero}")
 
     for hero in get_heroes():
         for ability in hero.abilities:
             if "_" in ability.localized_name:
-                print(f"{ability.localized_name} - {ability.facet_id}")
+                print(ability.localized_name)
 
     response = find_voice_responses_by_text("you people")[0]
     print(response)
