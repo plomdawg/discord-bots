@@ -2,7 +2,7 @@
 
 import pathlib
 import re
-from typing import List, Optional, Tuple
+from typing import Awaitable, Callable, List, Optional, Tuple
 
 import discord
 import requests
@@ -64,14 +64,20 @@ def emoji_name(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9_]", "", name)
 
 
-def download_hero_icons(
-    icon_dir: pathlib.Path, heroes: List[Hero]
+async def download_hero_icons(
+    icon_dir: pathlib.Path,
+    heroes: List[Hero],
+    progress: Optional[Callable[[str, str, int, int], Awaitable[None]]] = None,
 ) -> List[pathlib.Path]:
     """Download hero icons from dotabase into icon_dir.
 
     dotabase already serves every hero icon (~2-3KB PNGs, far under Discord's
     256KB emoji cap), so no wiki scraping is needed. Files are named with
     emoji_name() so the uploader derives the right emoji name from the filename.
+
+    Args:
+        progress: Optional async callback `(hero_name, status, done, total)`,
+            where status is "downloaded", "cached" or "failed: <reason>".
 
     Returns the paths that are on disk and ready to upload.
     """
@@ -80,17 +86,24 @@ def download_hero_icons(
     for hero in heroes:
         if not hero.icon:
             continue
-        path = icon_dir / f"{emoji_name(hero.localized_name)}.png"
+        name = hero.localized_name
+        path = icon_dir / f"{emoji_name(name)}.png"
         if path.exists():
             paths.append(path)
+            if progress:
+                await progress(name, "cached", len(paths), len(heroes))
             continue
         try:
             response = requests.get(dotabase_url(hero.icon), timeout=30)
             response.raise_for_status()
             path.write_bytes(response.content)
             paths.append(path)
+            if progress:
+                await progress(name, "downloaded", len(paths), len(heroes))
         except Exception as e:
-            print(f"Error downloading icon for {hero.localized_name}: {e}")
+            print(f"Error downloading icon for {name}: {e}")
+            if progress:
+                await progress(name, f"failed: {e}", len(paths), len(heroes))
     return paths
 
 
@@ -141,6 +154,7 @@ async def upload_icons_to_servers(
     servers: List[int],
     chunk_size: int = 50,
     icons: Optional[List[pathlib.Path]] = None,
+    progress: Optional[Callable[[str, str, str, int, int], Awaitable[None]]] = None,
 ) -> Tuple[int, int]:
     """Upload icons to multiple servers in chunks.
 
@@ -154,6 +168,11 @@ async def upload_icons_to_servers(
             advances current_icon_index past icons it *skips* as already
             existing, so a full directory can burn the free-slot budget before
             reaching the new ones.
+        progress: Optional async callback invoked once per icon as
+            `(name, emoji, status, done, total)`, where `emoji` is the rendered
+            emoji string (empty unless status is "uploaded") and `status` is
+            "uploaded", "exists" or "failed: <reason>". Lets callers stream a
+            live list; keep the callback cheap and throttle any message edits.
 
     Returns:
         Tuple of (successful uploads, total icons)
@@ -199,14 +218,26 @@ async def upload_icons_to_servers(
                 # Check if emoji already exists
                 if any(emoji.name == name for emoji in guild.emojis):
                     print(f"Emoji {name} already exists in {guild.name}")
+                    if progress:
+                        await progress(name, "", "exists", successful, len(icons))
                     continue
 
                 try:
                     with open(icon, "rb") as f:
-                        await guild.create_custom_emoji(name=name, image=f.read())
+                        created = await guild.create_custom_emoji(
+                            name=name, image=f.read()
+                        )
                     successful += 1
+                    if progress:
+                        await progress(
+                            name, str(created), "uploaded", successful, len(icons)
+                        )
                 except Exception as e:
                     print(f"Error uploading {name} to {guild.name}: {e}")
+                    if progress:
+                        await progress(
+                            name, "", f"failed: {e}", successful, len(icons)
+                        )
 
             current_icon_index += icons_to_process
             available_slots -= icons_to_process
