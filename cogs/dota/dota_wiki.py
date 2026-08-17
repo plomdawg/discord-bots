@@ -223,11 +223,14 @@ class DotaWiki(commands.Cog):
 
     @app_commands.command(
         name="scrape_icons",
-        description="Scrape hero and rune icons from the Dota 2 wiki.",
+        description="Scrape rune icons from the Dota 2 wiki.",
     )
     @app_commands.guilds(PLOMBOT_DEV_GUILD)
     async def scrape_icons(self, interaction: discord.Interaction):
-        """Scrape hero and rune icons from the Dota 2 wiki."""
+        """Scrape rune icons from the Dota 2 wiki.
+
+        Runes only -- hero icons come from dotabase via /setup, no scraping needed.
+        """
         message = await self.bot.messaging.send_embed(
             interaction,
             title="Scraping Icons",

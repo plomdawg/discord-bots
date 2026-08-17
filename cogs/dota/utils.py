@@ -1,9 +1,11 @@
 """Utility functions for Dota 2 cogs."""
 
 import pathlib
+import re
 from typing import List, Optional, Tuple
 
 import discord
+import requests
 from dotabase import Ability, Hero, Item, Response, Voice, dotabase_session
 
 db = dotabase_session()
@@ -49,6 +51,47 @@ def get_heroes() -> List[Hero]:
 def get_hero_by_name(name: str) -> Optional[Hero]:
     """Get a hero by name."""
     return db.query(Hero).filter(Hero.localized_name == name).first()
+
+
+def emoji_name(name: str) -> str:
+    """Normalize a name into a valid Discord emoji name.
+
+    Discord only accepts [A-Za-z0-9_] in emoji names, so "Anti-Mage" and
+    "Nature's Prophet" must lose their punctuation. Both the uploader and the
+    lookup in Emojis.get() must apply this SAME transform -- when they differed
+    (get() stripped only spaces) those two heroes could never resolve an emoji.
+    """
+    return re.sub(r"[^A-Za-z0-9_]", "", name)
+
+
+def download_hero_icons(
+    icon_dir: pathlib.Path, heroes: List[Hero]
+) -> List[pathlib.Path]:
+    """Download hero icons from dotabase into icon_dir.
+
+    dotabase already serves every hero icon (~2-3KB PNGs, far under Discord's
+    256KB emoji cap), so no wiki scraping is needed. Files are named with
+    emoji_name() so the uploader derives the right emoji name from the filename.
+
+    Returns the paths that are on disk and ready to upload.
+    """
+    icon_dir.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for hero in heroes:
+        if not hero.icon:
+            continue
+        path = icon_dir / f"{emoji_name(hero.localized_name)}.png"
+        if path.exists():
+            paths.append(path)
+            continue
+        try:
+            response = requests.get(dotabase_url(hero.icon), timeout=30)
+            response.raise_for_status()
+            path.write_bytes(response.content)
+            paths.append(path)
+        except Exception as e:
+            print(f"Error downloading icon for {hero.localized_name}: {e}")
+    return paths
 
 
 def get_abilities() -> List[Ability]:
@@ -97,6 +140,7 @@ async def upload_icons_to_servers(
     icon_dir: pathlib.Path,
     servers: List[int],
     chunk_size: int = 50,
+    icons: Optional[List[pathlib.Path]] = None,
 ) -> Tuple[int, int]:
     """Upload icons to multiple servers in chunks.
 
@@ -105,13 +149,18 @@ async def upload_icons_to_servers(
         icon_dir: Directory containing the icons
         servers: List of server IDs to upload to
         chunk_size: Number of icons to upload per server
+        icons: Explicit icons to upload. Defaults to every PNG in icon_dir.
+            Prefer passing only the icons you actually need: the loop below
+            advances current_icon_index past icons it *skips* as already
+            existing, so a full directory can burn the free-slot budget before
+            reaching the new ones.
 
     Returns:
         Tuple of (successful uploads, total icons)
     """
-    icons = list(
-        icon_dir.glob("*.png")
-    )  # Convert generator to list for len() and reuse
+    if icons is None:
+        # Convert generator to list for len() and reuse
+        icons = list(icon_dir.glob("*.png"))
     successful = 0
 
     # First, check available slots in each server
@@ -145,12 +194,7 @@ async def upload_icons_to_servers(
             icons_to_process = min(available_slots, len(icons) - current_icon_index)
             for i in range(icons_to_process):
                 icon = icons[current_icon_index + i]
-                name = (
-                    icon.name.replace(".png", "")
-                    .replace("-", "")
-                    .replace("_", "")
-                    .replace("'", "")
-                )
+                name = emoji_name(icon.stem)
 
                 # Check if emoji already exists
                 if any(emoji.name == name for emoji in guild.emojis):
