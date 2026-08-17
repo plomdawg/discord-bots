@@ -454,7 +454,7 @@ class ShopkeeperQuiz(commands.Cog):
                     hint=hint,
                     image=utils.dotabase_url(ability.icon),
                     url=utils.dota_wiki_url(ability.localized_name),
-                    emoji=emoji,
+                    emoji=self.bot.icons.get(ability.hero.localized_name),
                 )
             )
         self.log(f"Loaded {len(ability_words)} words from {len(abilities)} abilities.")
