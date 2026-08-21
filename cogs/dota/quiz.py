@@ -137,7 +137,9 @@ class ShopkeeperQuiz(BaseQuizCog):
 
     async def add_tts_reaction(self, quiz: Quiz, message: discord.Message) -> None:
         """Offer TTS of the scrambled word, in the my dudes server only."""
-        if quiz.channel.guild.id != MY_DUDES_GUILD.id:
+        # channel.guild is None in DMs, where there is no voice channel to play into.
+        guild = getattr(quiz.channel, "guild", None)
+        if guild is None or guild.id != MY_DUDES_GUILD.id:
             return
         try:
             await message.add_reaction("🗣️")
