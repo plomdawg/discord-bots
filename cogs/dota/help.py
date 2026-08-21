@@ -6,6 +6,9 @@ command_list = """
 `/quiz` - *Play the Shopkeeper's quiz*
 `/gold` - *Check your gold balance*
 `/top` - *List the top gold balances*
+`/slay-quiz` - *Play the Slay the Spire II quiz*
+`/embers` - *Check your ember balance*
+`/slay-top` - *List the top ember balances*
 `[exact quote]` - *Play a voiceline*
 `dota [partial quote]` - *Play a voiceline*
 `dota [partial quote] [n]` - *Play voiceline n out of many*

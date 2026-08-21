@@ -20,6 +20,7 @@ class DotaBot(DiscordBot):
         await self.load_cog("dota.dota_wiki", "DotaWiki")
         self.icons = typing.cast(Emojis, await self.load_cog("dota.emojis", "Emojis"))
         await self.load_cog("dota.quiz", "ShopkeeperQuiz")
+        await self.load_cog("slay.quiz", "SlayQuiz")
         await self.load_cog("dota.opendota", "OpenDota")
         await self.load_cog("dota.voice_lines", "VoiceLines")
         await self.load_cog("dota.help", "Help")
