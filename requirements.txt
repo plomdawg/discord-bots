@@ -31,7 +31,12 @@ sqlalchemy_utils
 opendota2py
 
 # Youtube-dl
-yt-dlp
+# Pinned so the version is explicit in git and a bump actually invalidates the
+# Docker pip layer. YouTube rotates its player/extractor constantly, so a stale
+# yt-dlp fails as googlevideo 403s at playback time (ffmpeg gets a URL issued
+# for a client YouTube has since blocked) rather than as an extraction error.
+# Bump this when playback starts 403ing.
+yt-dlp==2026.8.19
 
 # Youtube API
 python-youtube
